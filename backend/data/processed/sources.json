@@ -1,0 +1,307 @@
+{
+  "dataVersion": "581212a492338986",
+  "sources": [
+    {
+      "id": "SLDEM2015_512_00N_30N_000_045",
+      "regions": [
+        "moon"
+      ],
+      "version": "V2.0",
+      "kind": "elevation",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/jp2/sldem2015_512_00n_30n_000_045_jp2.lbl",
+      "files": [
+        {
+          "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/jp2/sldem2015_512_00n_30n_000_045.jp2",
+          "sha256": "8d6e9bb9687bd19dbc9de57c8044932540bb934e5ef557b473660f5056484a73"
+        },
+        {
+          "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/jp2/sldem2015_512_00n_30n_000_045_aux.xml",
+          "sha256": "c9c013daa77cfbbd68efb157c51198fda3aed157f0d5ebddaf1a94f9151faa71"
+        },
+        {
+          "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/jp2/sldem2015_512_00n_30n_000_045_jp2.lbl",
+          "sha256": "4d8f5edd72cdc486cbe491741a588dc545b7b72baa4cfb0e34cae7389d6305e0"
+        }
+      ],
+      "coverage": [
+        2.5,
+        25.4,
+        4.9,
+        27.0
+      ],
+      "crs": "Mean Earth / Polar Axis (DE421), planetocentric, east-positive",
+      "verticalReference": "Height above a 1,737,400 m lunar sphere",
+      "units": "m",
+      "nativeResolutionM": 59.225,
+      "analysisResolutionM": 90,
+      "license": "NASA Planetary Data System public archive",
+      "processing": "Decoded with the PDS auxiliary scale 0.5 m/LSB and nodata -32768, reprojected by area averaging.",
+      "preparedUtc": "2026-11-14T08:41:45.981273+00:00"
+    },
+    {
+      "id": "copernicus-glo30-pinacate",
+      "regions": [
+        "pinacate"
+      ],
+      "version": "GLO-30 Public, 2021 release",
+      "kind": "elevation",
+      "url": "https://copernicus-dem-30m.s3.amazonaws.com/readme.html",
+      "coverage": [
+        -113.89994613302339,
+        31.387257645924862,
+        -112.99365734844108,
+        32.161426931051054
+      ],
+      "files": [
+        {
+          "id": "Copernicus_DSM_COG_10_N31_00_W114_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N31_00_W114_00_DEM/Copernicus_DSM_COG_10_N31_00_W114_00_DEM.tif",
+          "sha256": "fa2f33fafdb0ca37008989074e4337b54e048fe97dcaa40e935ccb3d55b41f96"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_N31_00_W113_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N31_00_W113_00_DEM/Copernicus_DSM_COG_10_N31_00_W113_00_DEM.tif",
+          "sha256": "320109a4d8f093f9dc4b1934fb2ef43336ac62bb25b276409d4474b8d2b9c329"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_N32_00_W114_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N32_00_W114_00_DEM/Copernicus_DSM_COG_10_N32_00_W114_00_DEM.tif",
+          "sha256": "bebb43e87c82b473f2c59171ce7c86f4d6f2b5928e71e59e3965590fd4a19426"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_N32_00_W113_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N32_00_W113_00_DEM/Copernicus_DSM_COG_10_N32_00_W113_00_DEM.tif",
+          "sha256": "5ee253f40493a8b382eb4a5304b4378392409e16eb7bf29900c61e2506a934d0"
+        }
+      ],
+      "crs": "WGS 84",
+      "verticalReference": "EGM2008 orthometric height",
+      "units": "m",
+      "nativeResolutionM": 30,
+      "analysisResolutionM": 90,
+      "license": "Copernicus DEM GLO-30 public license",
+      "processing": "Mosaicked source surface heights and averaged onto the local metric grid. Vegetation or structures may influence heights.",
+      "preparedUtc": "2026-11-14T08:41:45.981297+00:00"
+    },
+    {
+      "id": "copernicus-glo30-harrat-khaybar",
+      "regions": [
+        "harrat-khaybar"
+      ],
+      "version": "GLO-30 Public, 2021 release",
+      "kind": "elevation",
+      "url": "https://copernicus-dem-30m.s3.amazonaws.com/readme.html",
+      "coverage": [
+        39.519885621415455,
+        25.28753040761013,
+        40.36276143463134,
+        26.051341037833602
+      ],
+      "files": [
+        {
+          "id": "Copernicus_DSM_COG_10_N25_00_E039_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N25_00_E039_00_DEM/Copernicus_DSM_COG_10_N25_00_E039_00_DEM.tif",
+          "sha256": "371c7a721ac5ca34bc3b289ce33f0d3b48745da9318151234423914aa99ab91c"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_N25_00_E040_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N25_00_E040_00_DEM/Copernicus_DSM_COG_10_N25_00_E040_00_DEM.tif",
+          "sha256": "6971f80fcc4be320f7d1736ac82bda6623087f52d4e729c5b289a7642a666fe7"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_N26_00_E039_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N26_00_E039_00_DEM/Copernicus_DSM_COG_10_N26_00_E039_00_DEM.tif",
+          "sha256": "f65f18a62d4240e7758054df8cbbcb07fbe2dcec95c772b3a91987c08b7e01b8"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_N26_00_E040_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N26_00_E040_00_DEM/Copernicus_DSM_COG_10_N26_00_E040_00_DEM.tif",
+          "sha256": "e6cc5057a86698def91917244b6b4c986c73aa0edc231b360882999369da013c"
+        }
+      ],
+      "crs": "WGS 84",
+      "verticalReference": "EGM2008 orthometric height",
+      "units": "m",
+      "nativeResolutionM": 30,
+      "analysisResolutionM": 90,
+      "license": "Copernicus DEM GLO-30 public license",
+      "processing": "Mosaicked source surface heights and averaged onto the local metric grid. Vegetation or structures may influence heights.",
+      "preparedUtc": "2026-11-14T08:41:45.981309+00:00"
+    },
+    {
+      "id": "copernicus-glo30-payun-matru",
+      "regions": [
+        "payun-matru"
+      ],
+      "version": "GLO-30 Public, 2021 release",
+      "kind": "elevation",
+      "url": "https://copernicus-dem-30m.s3.amazonaws.com/readme.html",
+      "coverage": [
+        -69.72249424826396,
+        -36.878887647839534,
+        -68.77993985525674,
+        -36.119475290176965
+      ],
+      "files": [
+        {
+          "id": "Copernicus_DSM_COG_10_S37_00_W070_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S37_00_W070_00_DEM/Copernicus_DSM_COG_10_S37_00_W070_00_DEM.tif",
+          "sha256": "499adbf604f5469074afa29c88a84cfd9929ec2690a8dac724ce3ddece472701"
+        },
+        {
+          "id": "Copernicus_DSM_COG_10_S37_00_W069_00_DEM",
+          "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S37_00_W069_00_DEM/Copernicus_DSM_COG_10_S37_00_W069_00_DEM.tif",
+          "sha256": "893a003f7ba6c680a410491394d69257a9b24fadc3494d71ef39fcc41a10bd7b"
+        }
+      ],
+      "crs": "WGS 84",
+      "verticalReference": "EGM2008 orthometric height",
+      "units": "m",
+      "nativeResolutionM": 30,
+      "analysisResolutionM": 90,
+      "license": "Copernicus DEM GLO-30 public license",
+      "processing": "Mosaicked source surface heights and averaged onto the local metric grid. Vegetation or structures may influence heights.",
+      "preparedUtc": "2026-11-14T08:41:45.981317+00:00"
+    },
+    {
+      "id": "LRO_WAC_Mosaic_Global_303ppd_v02",
+      "regions": [
+        "moon"
+      ],
+      "version": "2",
+      "kind": "imagery",
+      "url": "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_WAC_Mosaic_Global_303ppd_v02",
+      "coverage": [
+        2.4993896484375,
+        25.39764404296875,
+        4.90264892578125,
+        27.00164794921875
+      ],
+      "files": [
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/89/259.jpg",
+          "sha256": "0fc13b0f1d10a1846114903439da037e643db56adef390f44ba00fec2c69ca34"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/89/260.jpg",
+          "sha256": "8fdb47217061cf2d34ee2be7e13d5a5f55367e787577662464be0a40941726b7"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/89/261.jpg",
+          "sha256": "676a5bfeb9de7cd0bfebde7cf428bdfd754ad6b7dc8b695c8fe098be03ec286b"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/89/262.jpg",
+          "sha256": "917612b78af83662c15627445e99b6aaf71c17f523352ceee50cd59f0de0f7b4"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/90/259.jpg",
+          "sha256": "27b3ebf4a5291914c8e92b61de867b5db72cb10ace5679b5084930abc8e12e94"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/90/260.jpg",
+          "sha256": "a3d4081889d1f6bc536a1c97600bf9bce6368d984a32bb25975ab798aa9c3fc4"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/90/261.jpg",
+          "sha256": "25333f270d18478042aa09a33b4b312a726cf42998003e8bbdf55cb7d8aac436"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/90/262.jpg",
+          "sha256": "4feb1494ac7556fc00cbef80443182f5b5dda3f155dcb5276233bc33aa18acf3"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/91/259.jpg",
+          "sha256": "bbcdf51af3b9a8b0c31ab02881ca5d2f47a2140ba2a214398907c45d4aa59611"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/91/260.jpg",
+          "sha256": "096fe2468663d731037bf88f77b352ca9e4b28d5b0481c023c3660ea9639867b"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/91/261.jpg",
+          "sha256": "e871c5294f5cbfe93970a42aa4d0eb72c14114745ad2acca4b448515170db696"
+        },
+        {
+          "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/8/91/262.jpg",
+          "sha256": "151b9db8b7e33b2298a8b50a3ce498eff162c7e14f8fbcfca23aa40ab5270b8d"
+        }
+      ],
+      "crs": "Moon 2000 equirectangular tiles",
+      "nativeResolutionM": 100,
+      "license": "NASA Moon Trek public dataset. Credit LROC team.",
+      "processing": "Moon Trek WMTS level 8 tiles stitched and cropped at pixel boundaries.",
+      "preparedUtc": "2026-11-14T08:41:45.981332+00:00"
+    },
+    {
+      "id": "sentinel-2-pinacate",
+      "regions": [
+        "pinacate"
+      ],
+      "version": "L2A",
+      "kind": "imagery",
+      "url": "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2A_12STA_20241117_0_L2A",
+      "sceneUrls": [
+        "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2A_12STA_20241117_0_L2A"
+      ],
+      "coverage": [
+        -113.77,
+        31.58,
+        -113.12,
+        31.97
+      ],
+      "crs": "WGS 84 overlay",
+      "nativeResolutionM": 10,
+      "license": "Modified Copernicus Sentinel data 2024",
+      "processing": "Bundled frontend imagery for context.",
+      "preparedUtc": "2026-11-14T08:41:45.981338+00:00"
+    },
+    {
+      "id": "sentinel-2-harrat-khaybar",
+      "regions": [
+        "harrat-khaybar"
+      ],
+      "version": "L2A",
+      "kind": "imagery",
+      "url": "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2A_37REJ_20241022_0_L2A",
+      "sceneUrls": [
+        "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2A_37REJ_20241022_0_L2A",
+        "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2B_37RFJ_20241216_0_L2A"
+      ],
+      "coverage": [
+        39.62,
+        25.41,
+        40.26,
+        25.93
+      ],
+      "crs": "WGS 84 overlay",
+      "nativeResolutionM": 10,
+      "license": "Modified Copernicus Sentinel data 2024",
+      "processing": "Bundled frontend imagery for context.",
+      "preparedUtc": "2026-11-14T08:41:45.981344+00:00"
+    },
+    {
+      "id": "sentinel-2-payun-matru",
+      "regions": [
+        "payun-matru"
+      ],
+      "version": "L2A",
+      "kind": "imagery",
+      "url": "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2A_19HDV_20241026_0_L2A",
+      "sceneUrls": [
+        "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2A_19HDV_20241026_0_L2A"
+      ],
+      "coverage": [
+        -69.56,
+        -36.66,
+        -68.94,
+        -36.24
+      ],
+      "crs": "WGS 84 overlay",
+      "nativeResolutionM": 10,
+      "license": "Modified Copernicus Sentinel data 2024",
+      "processing": "Bundled frontend imagery for context.",
+      "preparedUtc": "2026-11-14T08:41:45.981349+00:00"
+    }
+  ]
+}

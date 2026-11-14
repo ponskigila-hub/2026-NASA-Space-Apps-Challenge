@@ -1,0 +1,24 @@
+{
+  "transform": [
+    90.0,
+    0.0,
+    -32940.0,
+    0.0,
+    -90.0,
+    24480.0
+  ],
+  "crs": "+proj=aeqd +lat_0=26.2 +lon_0=3.7 +R=1737400 +units=m +type=crs",
+  "bounds": [
+    2.5,
+    25.4,
+    4.9,
+    27.0
+  ],
+  "geographicCrs": "+proj=longlat +R=1737400 +type=crs",
+  "gridSpacingM": 90,
+  "validFraction": 1.0,
+  "shape": [
+    542,
+    732
+  ]
+}

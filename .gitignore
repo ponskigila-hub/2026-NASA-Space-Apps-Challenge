@@ -22,3 +22,16 @@ app/dist/
 .env
 *.egg-info/
 .pytest_cache/
+.DS_Store
+.env
+.env.*
+.netrc
+_netrc
+.npmrc
+*.py[cod]
+__pycache__/
+.pytest_cache/
+frontend.zip
+frontend/Archive.zip
+backend/data/science/spectra/harrat-khaybar.tif
+backend/data/science/spectra/harrat-khaybar.json
