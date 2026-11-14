@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "name": "LDEM_1024_15N_30N_000_030",
+    "version": "V1.05",
+    "portal": "NASA PDS Geosciences Node / LRO LOLA",
+    "url": "https://pds-geosciences.wustl.edu/missions/lro/",
+    "resolution_m": 29.61,
+    "downloaded": "2026-11-14",
+    "notes": "1024 ppd Simple Cylindrical; SCALING_FACTOR=0.5; OFFSET=1737400.0; cropped to MOON_BBOX=(3.0, 25.6, 4.3, 26.6); height = DN * 0.5",
+    "coverage": "15N-30N, 0-30E",
+    "product_id": "LDEM_1024_15N_30N_000_030",
+    "pixel_m_approx": 29.6123046875
+  }
+]
