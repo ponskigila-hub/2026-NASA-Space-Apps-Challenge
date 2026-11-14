@@ -1,0 +1,40 @@
+{
+  "scenario": "fixture_success",
+  "lunar": {
+    "length_m": 7200,
+    "slope_mean": 4.2,
+    "rough_mean": 1.8
+  },
+  "candidates": [
+    {
+      "region": "Pinacate",
+      "status": "ok",
+      "scores": {"slope": 0.82, "rough": 0.75, "lighting": 0.71, "minerals": null},
+      "total": 0.78,
+      "confidence": "medium",
+      "evidence": {"pixel_m": 118, "window_m": 500, "corridor_valid": 0.91},
+      "limits": ["gravity 1/6g", "atmosphere", "DEM sub-pixel rocks"],
+      "prior_use_note": "NASA astronaut training 1965-1971 [VERIFY]",
+      "feasibility_flag": "check permits and safety separately"
+    },
+    {
+      "region": "Harrat_Khaybar",
+      "status": "ok",
+      "scores": {"slope": 0.68, "rough": 0.71, "lighting": 0.55, "minerals": null},
+      "total": 0.66,
+      "confidence": "medium",
+      "evidence": {},
+      "limits": ["gravity 1/6g", "atmosphere", "DEM sub-pixel rocks"],
+      "prior_use_note": "Less commonly cited",
+      "feasibility_flag": "check permits and safety separately"
+    },
+    {
+      "region": "Payun_Matru",
+      "status": "unevaluable",
+      "reason": "no feasible route within length tolerance",
+      "scores": {},
+      "limits": ["gravity 1/6g", "atmosphere"]
+    }
+  ],
+  "note": "ILLUSTRATIVE FIXTURE ONLY – not real computed results"
+}
