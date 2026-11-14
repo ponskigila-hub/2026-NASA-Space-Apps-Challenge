@@ -10,5 +10,41 @@
     "coverage": "15N-30N, 0-30E",
     "product_id": "LDEM_1024_15N_30N_000_030",
     "pixel_m_approx": 29.6123046875
+  },
+  {
+    "name": "common_grids",
+    "version": "phase4",
+    "portal": "derived",
+    "url": "",
+    "resolution_m": 30.0,
+    "downloaded": "2026-11-14",
+    "notes": "Moon + ['Pinacate', 'Harrat_Khaybar', 'Payun_Matru'] at 30.0 m"
+  },
+  {
+    "name": "common_grids",
+    "version": "phase4",
+    "portal": "derived",
+    "url": "",
+    "resolution_m": 30.0,
+    "downloaded": "2026-11-14",
+    "notes": "Moon + ['Pinacate', 'Harrat_Khaybar', 'Payun_Matru'] at 30.0 m"
+  },
+  {
+    "name": "common_grids",
+    "version": "phase4-tight",
+    "portal": "derived",
+    "url": "",
+    "resolution_m": 30.0,
+    "downloaded": "2026-11-14",
+    "notes": "tight bounds; Moon+Earth at 30.0 m"
+  },
+  {
+    "name": "common_grids",
+    "version": "phase4-moonfix",
+    "portal": "derived",
+    "url": "",
+    "resolution_m": 30.0,
+    "downloaded": "2026-11-14",
+    "notes": "Moon bounds from crop; Earth OK"
   }
 ]
