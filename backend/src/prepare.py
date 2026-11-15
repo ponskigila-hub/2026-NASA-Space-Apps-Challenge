@@ -30,9 +30,9 @@ WAC = "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.
 WAC_METADATA = "https://trek.nasa.gov/moon/TrekWS/rest/cat/metadata/fgdc/html?label=LRO_WAC_Mosaic_Global_303ppd_v02"
 
 
-def download(url, name=None):
-    RAW.mkdir(parents=True, exist_ok=True)
-    path = RAW / (name or url.rsplit("/", 1)[1])
+def download(url, name=None, *, destination_dir=RAW):
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    path = destination_dir / (name or url.rsplit("/", 1)[1])
     if not path.exists():
         partial = path.with_suffix(path.suffix + ".part")
         with urlopen(url, timeout=60) as source, partial.open("wb") as output:

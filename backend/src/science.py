@@ -40,9 +40,9 @@ def science_version():
     return digest.hexdigest()[:16]
 
 
-def enrich(data, lunar_utc, earth_start, remote_grids=None):
+def enrich(data, lunar_utc, earth_start, remote_grids=None, lunar_grid=None):
     try:
-        lighting, light_sites = analyze_lighting(data, lunar_utc, earth_start, remote_grids)
+        lighting, light_sites = analyze_lighting(data, lunar_utc, earth_start, remote_grids, lunar_grid)
     except Exception:
         LOG.exception("Could not compute lighting evidence")
         lighting, light_sites = {"status": "unavailable", "reason": "Solar or terrain-horizon calculation failed."}, {}

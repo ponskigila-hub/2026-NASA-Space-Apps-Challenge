@@ -8,7 +8,7 @@ import { MissionHeader } from './MissionSummary';
 import RouteAnalysis from './RouteAnalysis';
 import { previewRoute, HADLEY_REGION, type LunarRegion, type Endpoint, type Endpoints, type Point } from './lunar';
 
-import { analyze, applyPreset, defaultEarthStart, defaultLunarUtc, getEarthSites, getLunarRegions, presets, replay, terrainRoute, type Analysis, type Preset, type Replay, type RouteOverlay } from './analysisApi';
+import { analyze, applyPreset, defaultEarthStart, defaultLunarUtc, getEarthSites, getLunarLocation, getLunarRegions, presets, replay, terrainRoute, type Analysis, type LunarLocation, type Preset, type Replay, type RouteOverlay } from './analysisApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -63,6 +63,16 @@ interface CoordinateFormProps {
 }
 
 function CoordinateForm({ endpoint, point, active, onSelect, onSave }: CoordinateFormProps) {
+  const [location, setLocation] = useState<LunarLocation | null>(null);
+  useEffect(() => {
+    if (!point) return;
+    const controller = new AbortController();
+    getLunarLocation(point, controller.signal).then(value => {
+      if (!controller.signal.aborted) setLocation(value);
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [point]);
+
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const coordinates = new FormData(event.currentTarget);
@@ -79,6 +89,12 @@ function CoordinateForm({ endpoint, point, active, onSelect, onSave }: Coordinat
           <Crosshair size={14} /> Pick on map
         </button>
       </div>
+      {point && <div className="lunar-point-location" aria-live="polite">
+        {location?.feature ? <a href={location.feature.sourceUrl} target="_blank" rel="noreferrer">
+          {location.feature.distanceKm < 0.2 ? location.feature.name : `Near ${location.feature.name}`}
+        </a> : <span>{location ? 'No nearby named feature' : 'Lunar coordinates selected'}</span>}
+        {location && !location.terrainSupported && <small>On-demand terrain coverage ends at 60° latitude.</small>}
+      </div>}
       <div className="coordinate-inputs">
         <label>Latitude<input name="lat" type="number" required min={-90} max={90} step="any"
           placeholder="0.000000" defaultValue={point?.lat.toFixed(6)} /></label>
@@ -120,6 +136,10 @@ export default function App() {
 
   const preview = useMemo(() => points.A && points.B ? previewRoute(points.A, points.B) : null, [points]);
   const route = useMemo(() => result ? terrainRoute(result) : preview, [preview, result]);
+  const [west, south, east, north] = lunarRegion.bounds;
+  const outsidePreparedRegion = Object.values(points).some(point => point &&
+    (point.lon < west || point.lon > east || point.lat < south || point.lat > north));
+  const regionHeading = result?.lunarRegion?.name ?? (outsidePreparedRegion ? 'Lunar traverse' : lunarRegion.name);
 
   useEffect(() => () => request.current?.abort(), []);
 
@@ -203,7 +223,7 @@ export default function App() {
       const earthSites = demo ? [] : (await getEarthSites(controller.signal)).map(site => site.id);
       const calculated = demo
         ? await replay(demo, controller.signal)
-        : await analyze(points.A!, points.B!, preset, new Date(lunarUtc + 'Z').toISOString(), earthStart, controller.signal, { earthSites, lunarRegion: lunarRegion.id });
+        : await analyze(points.A!, points.B!, preset, new Date(lunarUtc + 'Z').toISOString(), earthStart, controller.signal, { earthSites, lunarRegion: 'auto' });
       if (controller.signal.aborted) return;
       if (demo) {
         setOverlayMode(null);
@@ -294,7 +314,7 @@ export default function App() {
             <header className="workspace-heading">
               <div className="workspace-heading-copy">
                 <div className="workspace-location"><MapPin size={15} /> Moon <span>/</span> Lunar terrain</div>
-                <h1 id="workspace-title" ref={workspaceHeading} tabIndex={-1}>{lunarRegion.name}<span aria-hidden="true">.</span></h1>
+                <h1 id="workspace-title" ref={workspaceHeading} tabIndex={-1}>{regionHeading}<span aria-hidden="true">.</span></h1>
               </div>
               <p className="workspace-description">Explore the lunar surface and plan a traverse between two points.</p>
             </header>
@@ -316,8 +336,8 @@ export default function App() {
                       <button className="icon-button" type="button" aria-label="Clear route" title="Clear route"
                         disabled={!points.A && !points.B} onClick={clearPoints}><RotateCcw size={17} /></button>
                     </header>
-                    <p className="planner-instructions">Pick two points inside the selected region. Routes can be up to {lunarRegion.maxRouteKm} km.</p>
-                    <label className="sample-select lunar-region-picker">Lunar region
+                    <p className="planner-instructions">Pick two points on the Moon to identify nearby features. Routes can be up to {lunarRegion.maxRouteKm} km where terrain data is available.</p>
+                    <label className="sample-select lunar-region-picker">Jump to a prepared region
                       <select value={lunarRegion.id} disabled={loading || rankingEarthSites} onChange={event => {
                         const selected = lunarRegions.find(region => region.id === event.target.value);
                         if (selected) selectRegion(selected);

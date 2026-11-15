@@ -104,7 +104,7 @@ export function MissionHeader({ result, ranking }: {
         <a href="#earth-title" className="primary-button">Explore Earth matches <ArrowDownRight size={18} /></a>
       </div>
       <div className="mission-hero-media"><img className="mission-hero-image"
-        src={import.meta.env.BASE_URL + (result.lunarRegion?.relief ?? 'terrain/hadley-wac.webp')}
+        src={import.meta.env.BASE_URL + (result.lunarRegion?.relief ?? (result.lunarRegion?.id === 'auto' ? 'terrain/moon-wac-overview.webp' : 'terrain/hadley-wac.webp'))}
         alt={`Map of ${result.lunarRegion?.name ?? 'Hadley–Apennine'}`} />
         <span>{result.lunarRegion?.name ?? 'Hadley–Apennine'} · {result.lunarRegion?.relief ? 'NASA SLDEM2015' : 'NASA LROC'}</span>
       </div>

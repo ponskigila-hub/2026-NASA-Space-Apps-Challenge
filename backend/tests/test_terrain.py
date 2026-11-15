@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from api.main import app
 from src.config import FRONTEND, MAX_LENGTH, REGIONS
 from src.lunar_regions import LUNAR_REGIONS
+from src.lunar_terrain import tiles_for_bounds
 from src.pipeline import AnalysisError, compute, snap_endpoints
 from src.routing import route_ab, snap_to_valid
 from src.scoring import score_terrain
@@ -21,6 +22,13 @@ from src.terrain import load_grid
 
 
 class TerrainTests(unittest.TestCase):
+    def test_sldem_tile_selection_crosses_zero_and_the_date_line(self):
+        equator = list(tiles_for_bounds(-1, -1, 1, 1))
+        self.assertEqual(len(equator), 4)
+        self.assertEqual({shift for _, shift, _ in equator}, {-360, 0})
+        date_line = list(tiles_for_bounds(179, 10, 181, 11))
+        self.assertEqual([key.rsplit('_', 2)[1:] for key, _, _ in date_line], [['135', '180'], ['180', '225']])
+
     def test_routing_blocks_corner_cutting_and_steep_steps(self):
         dem = np.zeros((2, 2), dtype=np.float32)
         valid = np.array([[True, False], [False, True]])
@@ -98,6 +106,18 @@ class TerrainTests(unittest.TestCase):
 
 
 class APITests(unittest.TestCase):
+    def test_global_name_lookup_is_independent_of_terrain(self):
+        with TestClient(app) as client:
+            tycho = client.get('/lunar-location', params={'lat': -43.311, 'lon': -11.36}).json()
+            self.assertEqual(tycho['feature']['name'], 'Tycho')
+            self.assertTrue(tycho['terrainSupported'])
+            polar = client.get('/lunar-location', params={'lat': 89, 'lon': 90}).json()
+            self.assertIsNotNone(polar['feature'])
+            self.assertFalse(polar['terrainSupported'])
+            rejected = client.post('/analyses', json={'lunarRegion': 'auto',
+                'a': {'lat': 89, 'lon': 90}, 'b': {'lat': 89.01, 'lon': 90}})
+            self.assertEqual(rejected.json()['detail']['code'], 'outside_coverage')
+
     def test_live_analysis_and_export(self):
         points = {"a": {"lat": 26.19, "lon": 3.47}, "b": {"lat": 26.12, "lon": 3.70}}
         with TemporaryDirectory() as cache, patch("api.main.CACHE", Path(cache)), TestClient(app) as client:

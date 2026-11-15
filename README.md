@@ -13,6 +13,8 @@ The 90 m lunar terrain grids cover selected areas of Hadley–Apennine and Mare 
 
 The coverage map outlines the regions with routing grids. The background uses [NASA Moon Trek LROC WAC imagery](https://trek.nasa.gov/moon/), with a bundled level 0 mosaic for offline browsing.
 
+Choose **Whole Moon** to pick endpoints beyond the prepared regions. Each chosen coordinate is matched to the nearest named feature center within 50 km using a bundled [USGS/IAU Gazetteer](https://planetarynames.wr.usgs.gov/Page/MOON/target) snapshot. **Analyze route** loads and caches the NASA SLDEM2015 tiles intersecting the route area between 60°S and 60°N. The route limit is 75 km. The first analysis in a new area can take longer while its tiles download.
+
 ## Run locally
 
 Install Python 3.12 and Node.js 22 or later with npm. These shell commands are for macOS and Linux. On Windows, activate the virtual environment with `.venv\Scripts\Activate.ps1` in PowerShell.
@@ -115,7 +117,8 @@ python -m src.build_replays
 - `GET /config` returns lunar regions and bounds, example coordinates, route limits, presets, assets, and provenance.
 - `GET /earth-sites` returns the catalog of Earth analogs and source links.
 - `POST /analyses` accepts `a` and `b` objects with `lat` and `lon` in decimal degrees, plus optional `preset`, `lunarUtc` (ISO timestamp with timezone), and `earthStart` (UTC date).
-- Pass `lunarRegion` as `hadley` or `serenitatis`. Omitted values default to Hadley.
+- Pass `lunarRegion` as `auto` to select elevation from the two coordinates, or use `hadley` or `serenitatis` to select a prepared area. Omitted values default to Hadley.
+- `GET /lunar-location?lat=-43.31&lon=-11.36` returns the closest named feature within 50 km and indicates on-demand terrain coverage. Refresh the catalog from `backend/` with `python -m src.lunar_names`.
 - Pass `earthSites` as a list of catalog IDs and `earthCenter` as a latitude and longitude object to include additional Earth regions.
 - `GET /analyses/{id}` returns queued, running, complete, or failed status and the result or error.
 - `GET /analyses/{id}/report?site=pinacate` exports the stored result as a ZIP with a Markdown report, source manifest, profiles, Earth GeoJSON, and separately framed lunar geometry. Omit `site` for the top matched candidate. Pass `preset` to apply a different report objective to the same terrain analysis.

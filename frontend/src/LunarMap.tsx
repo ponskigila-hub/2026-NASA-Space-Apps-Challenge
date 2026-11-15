@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import L from 'leaflet';
 import type { RouteOverlay } from './analysisApi';
 import wacMetadata from '../public/terrain/hadley-wac.json';
-import { Crosshair, Map, Minus, Plus, MousePointer2, Navigation, RotateCcw } from 'lucide-react';
+import { Crosshair, Globe2, Map, Minus, Plus, MousePointer2, Navigation, RotateCcw } from 'lucide-react';
 import { formatPoint, lunarDistance, type LunarRegion, type Endpoint, type Endpoints, type Point, type RouteResult } from './lunar';
 
 const BASE = import.meta.env.BASE_URL;
@@ -59,16 +59,22 @@ export default function LunarMap(props: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layers = useRef<{ imagery: L.LayerGroup; coverage: L.LayerGroup; points: L.LayerGroup; route: L.LayerGroup; highlight: L.LayerGroup } | null>(null);
-  const [overview, setOverview] = useState(false);
-  const current = useRef({ ...props, overview });
-  current.current = { ...props, overview };
+  const [view, setView] = useState<'region' | 'coverage' | 'moon'>('region');
+  const overview = view === 'coverage';
+  const current = useRef({ ...props, view });
+  current.current = { ...props, view };
   const [coordinate, setCoordinate] = useState(() => fromLatLng(regionBounds(props.region.bounds).getCenter()));
   const [source, setSource] = useState<MapSource>('loading');
   const [mapAttempt, setMapAttempt] = useState(0);
 
   function resetView(instance = map.current) {
     if (!instance) return;
-    const { region, regions, overview } = current.current;
+    const { region, regions, view } = current.current;
+    if (view === 'moon') {
+      instance.fitBounds(MAP_BOUNDS, { animate: false, padding: [0, 0] });
+      return;
+    }
+    const overview = view === 'coverage';
     const bounds = regionBounds(region.bounds);
     if (overview) {
       for (const available of regions) bounds.extend(regionBounds(available.bounds));
@@ -80,7 +86,7 @@ export default function LunarMap(props: Props) {
     if (!container.current) return;
     const instance = L.map(container.current, {
       crs: lunarCrs, zoomControl: false, attributionControl: false,
-      minZoom: 0, maxZoom: 11, maxBounds: MAP_BOUNDS, maxBoundsViscosity: 1,
+      minZoom: -2, maxZoom: 11, maxBounds: MAP_BOUNDS, maxBoundsViscosity: 1,
       doubleClickZoom: false, wheelPxPerZoomLevel: 100,
     });
     map.current = instance;
@@ -103,7 +109,7 @@ export default function LunarMap(props: Props) {
       const chosen = fromLatLng(event.latlng);
       if (Math.abs(chosen.lat) > 90 || Math.abs(chosen.lon) > 180) return;
       setCoordinate(chosen);
-      if (!current.current.overview) current.current.onPick(chosen);
+      if (current.current.view !== 'coverage') current.current.onPick(chosen);
     });
     instance.on('mousemove', (event: L.LeafletMouseEvent) => setCoordinate(fromLatLng(event.latlng)));
     instance.on('moveend', () => setCoordinate(fromLatLng(instance.getCenter())));
@@ -150,7 +156,7 @@ export default function LunarMap(props: Props) {
       const enabled = !props.regionSelectionDisabled;
       const marker = L.marker(bounds.getCenter(), { icon, interactive: enabled, keyboard: enabled });
       marker.on('click', () => {
-        setOverview(false);
+        setView('region');
         current.current.onSelectRegion(region);
       });
       marker.on('keydown', (event: L.LeafletKeyboardEvent) => {
@@ -174,7 +180,7 @@ export default function LunarMap(props: Props) {
     setSource('loading');
     let loaded = false;
     const tiles = L.tileLayer(`${WMTS}/default/default028mm/{z}/{y}/{x}.jpg`, {
-      bounds: MAP_BOUNDS, noWrap: true, maxNativeZoom: 8, maxZoom: 11,
+      bounds: MAP_BOUNDS, noWrap: true, minNativeZoom: 0, maxNativeZoom: 8, maxZoom: 11,
       opacity: 0, keepBuffer: 3,
     });
     const timeout = window.setTimeout(() => {
@@ -267,17 +273,19 @@ export default function LunarMap(props: Props) {
 
   useLayoutEffect(() => {
     resetView();
-  }, [overview, props.resetSignal, props.regions]);
+  }, [view, props.resetSignal, props.regions]);
 
   return (
     <section className="map-shell" aria-label="Interactive lunar map">
       <div className="map-header lunar-map-header">
         <h2 id="lunar-map-title"><Crosshair size={18} /> Lunar map</h2>
         <button type="button" className="pick-button lunar-coverage-toggle" aria-pressed={overview}
-          onClick={() => setOverview(value => !value)}><Map size={16} aria-hidden="true" /> Coverage map</button>
+          onClick={() => setView(overview ? 'region' : 'coverage')}><Map size={16} aria-hidden="true" /> Coverage map</button>
+        <button type="button" className="pick-button lunar-coverage-toggle" aria-pressed={view === 'moon'}
+          onClick={() => setView(view === 'moon' ? 'region' : 'moon')}><Globe2 size={16} aria-hidden="true" /> Whole Moon</button>
         <div className="map-source" role="status">
           <span className={`status-dot status-${source}`} />
-          {source === 'live' ? 'Live NASA imagery' : source === 'loading' ? 'Loading NASA imagery' : overview ? 'Offline lunar imagery' : props.region.relief ? 'Offline elevation relief' : 'Hadley offline imagery'}
+          {source === 'live' ? 'Live NASA imagery' : source === 'loading' ? 'Loading NASA imagery' : view !== 'region' ? 'Offline lunar imagery' : props.region.relief ? 'Offline elevation relief' : 'Hadley offline imagery'}
           {source === 'local' && !props.replay && <button type="button" className="source-retry" aria-label="Retry NASA imagery"
             onClick={() => setMapAttempt(value => value + 1)}><RotateCcw size={14} /></button>}
         </div>

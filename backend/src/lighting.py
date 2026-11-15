@@ -141,7 +141,7 @@ def candidate_lighting(site, route, target, earth_start, grid=None):
             "reason": None if windows else "No daytime window met both the 2° Sun elevation and 10-point shadow tolerances."}
 
 
-def analyze_lighting(data, lunar_utc, earth_start, remote_grids=None):
+def analyze_lighting(data, lunar_utc, earth_start, remote_grids=None, lunar_grid=None):
     paths = [SCIENCE / "kernels" / name.split("/")[-1] for name in KERNELS]
     if not all(path.is_file() for path in paths):
         return {"status": "unavailable", "reason": "The NASA SPICE kernels have not been prepared."}, {}
@@ -150,7 +150,7 @@ def analyze_lighting(data, lunar_utc, earth_start, remote_grids=None):
     try:
         region_id = data.get("lunarRegion", {}).get("id", DEFAULT_LUNAR_REGION)
         location, _, indices, horizons, known, weights = route_horizons(
-            "moon", data["lunar"], load_grid(lunar_grid_name(region_id)))
+            "moon", data["lunar"], load_grid(lunar_grid_name(region_id)) if lunar_grid is None else lunar_grid)
         elevation, azimuth = lunar_sun(location, lunar_utc)
     finally:
         for path in reversed(paths):

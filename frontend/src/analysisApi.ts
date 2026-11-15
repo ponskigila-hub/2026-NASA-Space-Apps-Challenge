@@ -101,6 +101,15 @@ export function getEarthSites(signal: AbortSignal) {
   return json<EarthSite[]>(`${api}/earth-sites`, { signal });
 }
 
+export interface LunarLocation {
+  feature: { name: string; distanceKm: number; sourceUrl: string } | null;
+  terrainSupported: boolean;
+}
+
+export function getLunarLocation({ lat, lon }: Point, signal: AbortSignal) {
+  return json<LunarLocation>(`${api}/lunar-location?lat=${lat}&lon=${lon}`, { signal });
+}
+
 export async function getLunarRegions(signal: AbortSignal) {
   const config = await json<{ lunarRegions?: LunarRegion[] }>(`${api}/config`, { signal });
   return config.lunarRegions ?? [];

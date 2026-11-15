@@ -184,6 +184,8 @@ button:disabled { cursor: default; opacity: .47; }
 .coordinate-form { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--surface); transition: background .18s ease, border-color .18s ease; }
 .coordinate-form[data-active='true'] { border-color: var(--selected-line); background: var(--selected-surface); }
 .point-heading { margin-bottom: 7px; }
+.lunar-point-location { display: grid; gap: 3px; margin: 0 0 8px 32px; color: var(--muted); font-size: .86rem; }
+.lunar-point-location a { width: fit-content; color: var(--accent); text-underline-offset: 3px; }
 .point-heading h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: .84rem; font-weight: 600; }
 .point-letter, .lunar-pin span { display: grid; place-items: center; width: 25px; height: 25px; flex: none; border-radius: 50%; color: var(--accent-ink); background: var(--accent); font: .75rem var(--mono); }
 .point-b, .lunar-pin-b span { color: #26291e; background: var(--ink); }
