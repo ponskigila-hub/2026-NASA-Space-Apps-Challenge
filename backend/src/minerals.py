@@ -76,6 +76,15 @@ def extract_bands(wavelengths, reflectance):
     return output
 
 
+def spectral_route_points(route):
+    count = max(2, min(501, int(route["lengthKm"] * 1000 / 280) + 1))
+    profile = route["profile"]
+    distances = [p["distanceKm"] for p in profile]
+    indices = np.searchsorted(distances, np.linspace(0, route["lengthKm"], count))
+    indices = np.minimum(indices, len(profile)-1)
+    return [profile[i]["point"] for i in indices], [distances[i] for i in indices]
+
+
 def spectral_samples(site, route, folder=None):
     import rasterio
     from pyproj import Transformer
@@ -83,7 +92,7 @@ def spectral_samples(site, route, folder=None):
     metadata = folder / f"{site}.json"
     if not metadata.is_file():
         reason = ("No calibrated M³ reflectance is installed." if site == "moon" else
-                  "EMIT reflectance and quality masks must be prepared from an Earthdata scene for this region.")
+                  "Use Fetch mineral data to look for EMIT measurements along this route.")
         return {"status": "unavailable", "reason": reason}, {}
     config = json.loads(metadata.read_text())
     path = folder / f"{site}.tif"
@@ -94,17 +103,17 @@ def spectral_samples(site, route, folder=None):
         if len(wavelength) != raster.count or not raster.crs:
             raise ValueError(f"Reflectance raster or band metadata does not match {site}.")
         transform = Transformer.from_crs(load_grid(site).meta["geographicCrs"], raster.crs, always_xy=True)
-        count = max(2, min(501, int(route["lengthKm"] * 1000 / 280) + 1))
-        profile = route["profile"]
-        indices = np.searchsorted([p["distanceKm"] for p in profile], np.linspace(0, route["lengthKm"], count))
-        points = [profile[i]["point"] for i in indices]
+        points, distances = spectral_route_points(route)
         xy = [transform.transform(p["lon"], p["lat"]) for p in points]
         rowcols = [raster.index(*position) for position in xy]
         inside = np.array([0 <= r < raster.height and 0 <= c < raster.width for r, c in rowcols])
         reflectance = np.full((len(points), raster.count), np.nan)
         reflectance[inside] = [sample.astype(float).filled(np.nan)
                                for sample in raster.sample([value for value, valid in zip(xy, inside) if valid], masked=True)]
-    distances = [profile[i]["distanceKm"] for i in indices]
+    return summarize_spectra(config, wavelength, reflectance, rowcols, inside, distances)
+
+
+def summarize_spectra(config, wavelength, reflectance, rowcols, inside, distances):
     unique_rows = list({pixel: i for i, pixel in enumerate(rowcols) if inside[i]}.values())
     spectrum = []
     if unique_rows:

@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { Activity, ArrowDown, ArrowUp, Info, Route, X } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Activity, ArrowDown, ArrowUp, MapPin, Route, X } from 'lucide-react';
+import { CartesianGrid, Line, LineChart, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import RouteStat from './RouteStat';
 import type { Analysis } from './analysisApi';
 import type { Point, RouteResult } from './lunar';
 
 type ProfileMetric = 'elevationM' | 'slopeDeg' | 'roughnessM';
+const chartDescription: Record<ProfileMetric, string> = {
+  elevationM: 'Ground height (m) at each distance from point A (km).',
+  slopeDeg: 'Ground steepness (°) at each distance from point A (km).',
+  roughnessM: 'Variation in nearby ground height (m) at each distance from point A (km).',
+};
 const metrics = { elevationM: ['Elevation', 'm'], slopeDeg: ['Slope', '°'], roughnessM: ['Roughness', 'm'] } as const;
 
 interface Props {
@@ -26,32 +32,38 @@ export default function RouteAnalysis({ result, analysis, onClose, onHighlight }
   }
 
   return (
-    <section className="analysis-section" aria-labelledby="analysis-title">
+    <section className="analysis-section route-analysis" aria-labelledby="analysis-title">
       <header className="panel-heading">
-        <h2 id="analysis-title">Route analysis</h2>
+        <h2 id="analysis-title"><span className="planner-icon"><Route size={19} aria-hidden="true" /></span> Route analysis</h2>
         <button type="button" className="icon-button" aria-label="Close route analysis" onClick={onClose}><X size={18} /></button>
       </header>
+      <p className="analysis-note"><span>These measurements describe the calculated lunar route from <strong>A to B</strong>, using elevation data from NASA’s Lunar Reconnaissance Orbiter.</span></p>
       <div className="analysis-layout" data-profile={result.profile.length > 0}>
         <div className="analysis-overview">
           {result.lengthKm !== null && result.ascentM !== null && result.descentM !== null && result.steepestDeg !== null ? (
             <div className="metric-grid grid-flow-dense">
-              <div><span><Route size={14} /> Route length</span><strong>{result.lengthKm.toFixed(1)} <small>km</small></strong></div>
-              <div><span><Activity size={14} /> Maximum grade</span><strong>{result.steepestDeg.toFixed(1)}<small>°</small></strong></div>
-              <div><span><ArrowUp size={14} /> Total ascent</span><strong>{Math.round(result.ascentM).toLocaleString()} <small>m</small></strong></div>
-              <div><span><ArrowDown size={14} /> Total descent</span><strong>{Math.round(result.descentM).toLocaleString()} <small>m</small></strong></div>
+              <RouteStat label="Route length" icon={<Route size={14} />} description="Total distance traveled along the calculated path.">
+                {result.lengthKm.toFixed(1)} <small>km</small>
+              </RouteStat>
+              <RouteStat label="Maximum grade" icon={<Activity size={14} />} description="The steepest uphill or downhill step along the route, measured in degrees from level ground.">
+                {result.steepestDeg.toFixed(1)}<small>°</small>
+              </RouteStat>
+              <RouteStat label="Total ascent" icon={<ArrowUp size={14} />} description="The total height gained across all uphill sections.">
+                {Math.round(result.ascentM).toLocaleString()} <small>m</small>
+              </RouteStat>
+              <RouteStat label="Total descent" icon={<ArrowDown size={14} />} description="The total height lost across all downhill sections.">
+                {Math.round(result.descentM).toLocaleString()} <small>m</small>
+              </RouteStat>
             </div>
           ) : (
             <div className="metric-grid">
-              <div>
-                <span><Route size={14} /> Direct distance</span>
-                <strong>{result.directKm.toFixed(2)} <small>km</small></strong>
-              </div>
+              <RouteStat label="Direct distance" icon={<Route size={14} />} description="The shortest surface distance between points A and B.">
+                {result.directKm.toFixed(2)} <small>km</small>
+              </RouteStat>
             </div>
           )}
-          <p className="analysis-note"><Info size={16} /> <span>{result.explanation}</span></p>
-          <p className="analysis-note">
-            {analysis.mode === 'replay' ? 'Validated offline replay. ' : ''}
-            A snapped {analysis.endpoints.A.snapDistanceM.toFixed(0)} m · B snapped {analysis.endpoints.B.snapDistanceM.toFixed(0)} m
+          <p className="analysis-note route-data-details">
+            <span><strong>Terrain data</strong> · 90 m grid · <strong>{(analysis.lunar.corridor.coverage * 100).toFixed(1)}%</strong> usable coverage around the route.</span>
           </p>
         </div>
         {result.profile.length > 0 && (
@@ -64,6 +76,7 @@ export default function RouteAnalysis({ result, analysis, onClose, onHighlight }
                 ))}
               </div>
             </div>
+            <p className="chart-caption">{chartDescription[metric]}</p>
             <div className="chart-container" onMouseLeave={() => onHighlight(sample?.point ?? null)}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={result.profile} margin={{ top: 10, right: 12, left: 0, bottom: 3 }}
@@ -94,18 +107,25 @@ export default function RouteAnalysis({ result, analysis, onClose, onHighlight }
                     contentStyle={{ background: 'var(--panel)', borderColor: 'var(--line)', borderRadius: 8, fontSize: 12 }} />
                   <Line type="linear" dataKey={metric} stroke="var(--accent)" strokeWidth={2.4} dot={false}
                     activeDot={{ r: 5 }} isAnimationActive={false} />
+                  {sample && <ReferenceDot x={sample.distanceKm} y={sample[metric]} r={6}
+                    fill="var(--mission-cyan)" stroke="var(--panel)" strokeWidth={2} />}
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <p className="chart-caption">{label} ({unit}) by distance along route (km)</p>
-            <label className="sample-select">Highlight a profile point
-              <select value={selected ?? ''} onChange={event => selectSample(event.target.value === '' ? null : Number(event.target.value))}>
-                <option value="">Choose a distance</option>
-                {result.profile.map((point, index) => <option key={point.distanceKm} value={index}>
-                  {point.distanceKm.toFixed(1)} km · {point[metric].toFixed(metric === 'elevationM' ? 0 : 1)} {unit}
-                </option>)}
-              </select>
-            </label>
+            <div className="route-point-controls">
+              <label className="sample-select route-distance-slider">
+                <strong>Inspect distance from point A</strong>
+                <input type="range" min={0} max={result.profile.length - 1} step={1} value={selected ?? 0}
+                  aria-valuetext={`${(sample?.distanceKm ?? 0).toFixed(2)} kilometers from point A`}
+                  onChange={event => selectSample(Number(event.target.value))} />
+              </label>
+              {sample && <div className="route-point-selection">
+                <output><strong>{sample.distanceKm.toFixed(2)} km</strong> from A · {label} <strong>{sample[metric].toFixed(metric === 'elevationM' ? 0 : 1)} {unit}</strong></output>
+                <a className="pick-button" href="#lunar-map-title" onClick={() => onHighlight(sample.point)}>
+                  <MapPin size={15} aria-hidden="true" /> Show on lunar map
+                </a>
+              </div>}
+            </div>
           </div>
         )}
       </div>

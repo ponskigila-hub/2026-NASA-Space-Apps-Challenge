@@ -3,6 +3,7 @@ from functools import lru_cache
 from hashlib import sha256
 import logging
 
+from .analog_sites import NASA_ANALOGS
 from .config import NOMINAL_WEIGHTS, REGIONS, SCIENCE
 from .lighting import analyze_lighting
 from .minerals import analyze_minerals, M3_DATA, EMIT_DATA
@@ -18,9 +19,9 @@ SOURCES = [
      "url": "https://doi.org/10.1029/2012GC004370", "license": "Hartmann and Moosdorf (2012)"},
     {"id": "M3-L2", "regions": ["moon"], "kind": "reflectance catalogue", "version": "1.0",
      "url": M3_DATA, "license": "NASA PDS public archive"},
-    {"id": "EMIT-L2A", "regions": list(REGIONS), "kind": "reflectance catalogue", "version": "001",
+    {"id": "EMIT-L2A", "regions": [*REGIONS, *NASA_ANALOGS, "custom"], "kind": "reflectance catalogue", "version": "001",
      "url": EMIT_DATA, "license": "NASA Earthdata"},
-    {"id": "pvlib-SPA", "regions": list(REGIONS), "kind": "solar geometry", "version": "0.16.1",
+    {"id": "pvlib-SPA", "regions": [*REGIONS, *NASA_ANALOGS, "custom"], "kind": "solar geometry", "version": "0.16.1",
      "url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.get_solarposition.html",
      "license": "BSD 3-Clause"},
 ]
@@ -28,7 +29,7 @@ SOURCES = [
 
 @lru_cache(maxsize=1)
 def science_version():
-    digest = sha256()
+    digest = sha256(b"lighting-closest-frame-v2")
     for path in sorted([SCIENCE / "manifest.json", *(SCIENCE / "spectra").glob("*.json"),
                         *(SCIENCE / "spectra").glob("*.tif")]):
         if path.is_file():
@@ -39,9 +40,9 @@ def science_version():
     return digest.hexdigest()[:16]
 
 
-def enrich(data, lunar_utc, earth_start):
+def enrich(data, lunar_utc, earth_start, remote_grids=None):
     try:
-        lighting, light_sites = analyze_lighting(data, lunar_utc, earth_start)
+        lighting, light_sites = analyze_lighting(data, lunar_utc, earth_start, remote_grids)
     except Exception:
         LOG.exception("Could not compute lighting evidence")
         lighting, light_sites = {"status": "unavailable", "reason": "Solar or terrain-horizon calculation failed."}, {}

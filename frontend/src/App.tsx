@@ -1,12 +1,14 @@
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type Ref } from 'react';
-import { ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, Crosshair, MapPin, Orbit, RotateCcw, Route } from 'lucide-react';
+import { ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, Crosshair, Layers, MapPin, Orbit, RotateCcw, Route, Sun } from 'lucide-react';
 import LunarMap from './LunarMap';
+import AnalysisLoading from './AnalysisLoading';
+import { MissionHeader } from './MissionSummary';
 import RouteAnalysis from './RouteAnalysis';
 import { previewRoute, HADLEY_EXAMPLE, type Endpoint, type Endpoints, type Point } from './lunar';
 
-import { analyze, applyPreset, defaultEarthStart, defaultLunarUtc, presets, replay, terrainRoute, type Analysis, type Preset, type Replay, type RouteOverlay } from './analysisApi';
+import { analyze, applyPreset, defaultEarthStart, defaultLunarUtc, getEarthSites, presets, replay, terrainRoute, type Analysis, type Preset, type Replay, type RouteOverlay } from './analysisApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -14,6 +16,11 @@ const moonStill = `${import.meta.env.BASE_URL}moon-still.webp`;
 const Moon = lazy(() => import('./Moon'));
 const EarthComparison = lazy(() => import('./EarthComparison'));
 const endpoints = ['A', 'B'] as const;
+const objectiveHelp: Record<Preset, string> = {
+  rover_navigation: 'Gives more weight to steepness and roughness.',
+  camera_lighting: 'Gives more weight to Sun angles and shadows when comparable lighting data is available.',
+  mineral_mapping: 'Gives more weight to rock signals when the ranked sites have comparable satellite measurements.',
+};
 
 function Intro({ buttonRef, onEnter }: { buttonRef: Ref<HTMLButtonElement>; onEnter: () => void }) {
   const intro = useRef<HTMLElement>(null);
@@ -94,7 +101,10 @@ export default function App() {
   const [lunarUtc, setLunarUtc] = useState(defaultLunarUtc);
   const [earthStart, setEarthStart] = useState(defaultEarthStart);
   const [overlay, setOverlay] = useState<RouteOverlay[]>([]);
+  const [overlayMode, setOverlayMode] = useState<'lighting' | 'minerals' | null>(null);
   const [preset, setPreset] = useState<Preset>('rover_navigation');
+  const [rankingEarthSites, setRankingEarthSites] = useState(false);
+  const [loadingReplay, setLoadingReplay] = useState(false);
   const [replayCase, setReplayCase] = useState<Replay | null>(null);
   const request = useRef<AbortController | null>(null);
   const [highlight, setHighlight] = useState<Point | null>(null);
@@ -126,13 +136,18 @@ export default function App() {
     return () => motion.revert();
   }, { dependencies: [entered], revertOnUpdate: true });
 
-  function showAnalysis() {
-    setAnalysisOpen(true);
-    requestAnimationFrame(() => {
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      analysis.current?.focus({ preventScroll: true });
-      analysis.current?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'nearest' });
-    });
+  function mapOverlayControls(hasShadows: boolean, hasRocks: boolean) {
+    if (!hasShadows && !hasRocks) return null;
+    return <div className="map-overlay-controls" role="group" aria-label="Overlays on both main maps">
+      {hasShadows && <button type="button" className="pick-button map-shadow-control"
+        aria-pressed={overlayMode === 'lighting'} onClick={() => setOverlayMode(mode => mode === 'lighting' ? null : 'lighting')}>
+        <Sun size={15} aria-hidden="true" /> Shadows
+      </button>}
+      {hasRocks && <button type="button" className="pick-button map-rock-control"
+        aria-pressed={overlayMode === 'minerals'} onClick={() => setOverlayMode(mode => mode === 'minerals' ? null : 'minerals')}>
+        <Layers size={15} aria-hidden="true" /> Rock units
+      </button>}
+    </div>;
   }
 
   function clearAnalysis() {
@@ -140,26 +155,46 @@ export default function App() {
     setResult(null);
     setStatus('');
     setLoading(false);
+    setRankingEarthSites(false);
     setReplayCase(null);
     setOverlay([]);
+    setOverlayMode(null);
     setAnalysisOpen(false);
     setHighlight(null);
   }
 
   async function runAnalysis(demo?: Replay) {
     if (!demo && (!points.A || !points.B)) return;
-    clearAnalysis();
+    if (demo) {
+      request.current?.abort();
+      setRankingEarthSites(false);
+      setStatus('');
+    } else {
+      clearAnalysis();
+    }
     const controller = new AbortController();
     request.current = controller;
     setLoading(true);
-    if (demo) setReplayCase(demo);
-    showAnalysis();
+    setLoadingReplay(Boolean(demo));
+    setAnalysisOpen(true);
+    if (!demo) {
+      requestAnimationFrame(() => {
+        if (controller.signal.aborted) return;
+        analysis.current?.focus({ preventScroll: true });
+        analysis.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+      });
+    }
     try {
+      const earthSites = demo ? [] : (await getEarthSites(controller.signal)).map(site => site.id);
       const calculated = demo
         ? await replay(demo, controller.signal)
-        : await analyze(points.A!, points.B!, preset, new Date(lunarUtc + 'Z').toISOString(), earthStart, controller.signal);
+        : await analyze(points.A!, points.B!, preset, new Date(lunarUtc + 'Z').toISOString(), earthStart, controller.signal, { earthSites });
       if (controller.signal.aborted) return;
       if (demo) {
+        setOverlayMode(null);
+        setReplayCase(demo);
+        setOverlay([]);
+        setHighlight(null);
         setPoints({ A: calculated.endpoints.A.requested, B: calculated.endpoints.B.requested });
         setFormRevision(previous => ({ A: previous.A + 1, B: previous.B + 1 }));
         setActive(null);
@@ -169,6 +204,11 @@ export default function App() {
         if (calculated.lighting?.earthStart) setEarthStart(calculated.lighting.earthStart);
       }
       setResult(calculated);
+      requestAnimationFrame(() => {
+        if (controller.signal.aborted) return;
+        analysis.current?.focus({ preventScroll: true });
+        analysis.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+      });
     } catch (error) {
       if (!controller.signal.aborted) {
         setStatus(error instanceof Error ? error.message : 'The analysis could not load.');
@@ -238,6 +278,8 @@ export default function App() {
             </header>
             <div className="workspace-grid">
               <LunarMap points={points} active={active} route={route} highlight={highlight} replay={replayCase !== null} overlay={overlay} snapped={result?.endpoints} resetSignal={resetSignal}
+                overlayControls={analysisOpen && !loading && !rankingEarthSites && result ? mapOverlayControls(
+                  Boolean(result.lighting?.states?.length), Boolean(result.minerals?.lithology?.segments.length)) : undefined}
                 onPick={point => { if (active) selectPoint(active, point); }} onMove={setPoint} />
               <aside className="planner" aria-label="Route planner">
                 <div className="planner-body">
@@ -257,11 +299,11 @@ export default function App() {
                     ))}
                   </div>
                   <div className="planner-actions">
-                    <div className="route-summary" aria-live="polite"><span>Direct distance</span>
+                    <div className="route-summary" aria-live="polite"><div><span>Direct distance</span><small>Shortest surface distance from A to B</small></div>
                       <strong>{route ? <>{route.directKm.toFixed(2)} <small>km</small></> : <small>Set two points</small>}</strong>
                     </div>
                     <label className="sample-select">Mission objective
-                      <select value={preset} disabled={loading} onChange={event => {
+                      <select aria-describedby="objective-help" value={preset} disabled={loading} onChange={event => {
                         const objective = event.target.value as Preset;
                         setPreset(objective);
                         setResult(previous => previous ? applyPreset(previous, objective) : null);
@@ -269,16 +311,19 @@ export default function App() {
                         {Object.entries(presets).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                       </select>
                     </label>
+                    <p className="planner-help" id="objective-help">Changes how Earth sites are ranked. {objectiveHelp[preset]} The lunar path stays the same.</p>
                     <details className="scenario-controls">
                       <summary>Lighting scenario</summary>
+                      <p className="planner-help">Set the Moon’s Sun angle and modeled route shadows, then choose when to start looking for similar daylight on Earth.</p>
                       <label className="sample-select">Lunar date and time (UTC)
                         <input type="datetime-local" value={lunarUtc} min="1900-01-01T00:00" max="2100-12-31T23:59"
                           onChange={event => { clearAnalysis(); setLunarUtc(event.target.value); }} />
                       </label>
-                      <label className="sample-select">Earth search start (UTC)
+                      <label className="sample-select">First day to search on Earth (UTC)
                         <input type="date" value={earthStart} min="1900-01-01" max="2100-12-31"
                           onChange={event => { clearAnalysis(); setEarthStart(event.target.value); }} />
                       </label>
+                      <p className="planner-help">The app searches the next 30 days for similar Sun angles and shadow coverage. Click Analyze route after changing these settings.</p>
                     </details>
                     <button ref={analyzeButton} className="primary-button analyze-button" type="button" disabled={!preview || loading || !lunarUtc || !earthStart}
                       aria-expanded={analysisOpen} onClick={() => void runAnalysis()}>
@@ -297,22 +342,27 @@ export default function App() {
             </div>
             {analysisOpen && (
               <div ref={analysis} className="analysis-target" tabIndex={-1} role="group" aria-label="Route analysis">
-                {loading && <div className="analysis-section" role="status">
-                  {replayCase ? 'Loading offline replay…' : 'Calculating lunar terrain and searching the three Earth regions…'}
-                </div>}
+                {loading && (loadingReplay
+                  ? <AnalysisLoading title="Opening replay" detail="Loading the saved route and Earth comparisons." />
+                  : <AnalysisLoading title="Analyzing your lunar route" detail="Calculating the lunar path and ranking Earth sites. Results appear once every site has been processed."
+                      estimate={{ seconds: 120, label: 'Estimated total · About 1–2 minutes for a new route' }} />)}
                 {status && <div className="analysis-section" role="alert">{status}</div>}
-                {result && route && (
+                {!loading && result && route && (
                   <>
+                    <MissionHeader ranking={rankingEarthSites} result={result} />
                     <RouteAnalysis key={result.id} result={route} analysis={result} onHighlight={setHighlight}
                       onClose={() => {
                         setAnalysisOpen(false);
+                        setOverlayMode(null);
+                        setRankingEarthSites(false);
                         setHighlight(null);
                         analyzeButton.current?.focus();
                       }} />
                     <Suspense fallback={<p className="analysis-note" role="status">Loading Earth comparison…</p>}>
-                      <EarthComparison key={result.id} result={result} replayCase={result.mode === 'replay' ? replayCase : null} onMinerals={updated =>
+                      <EarthComparison key={result.id} result={result} replayCase={result.mode === 'replay' ? replayCase : null} onUpdate={updated =>
                         setResult(current => current?.id === result.id ? applyPreset(updated, current.preset) : current)}
-                        onHighlight={setHighlight} onMoonOverlay={setOverlay} />
+                        ranking={rankingEarthSites} onRankingChange={setRankingEarthSites}
+                        onHighlight={setHighlight} onMoonOverlay={setOverlay} mapOverlayControls={mapOverlayControls} overlayMode={overlayMode} />
                     </Suspense>
                   </>
                 )}

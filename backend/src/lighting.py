@@ -9,6 +9,7 @@ from pyproj import Geod
 from pvlib.solarposition import get_solarposition
 import spiceypy as spice
 
+from .analog_sites import NASA_ANALOGS
 from .config import MOON_RADIUS, RESOLUTION, SCIENCE
 from .prepare_science import KERNELS
 from .terrain import load_grid
@@ -58,8 +59,8 @@ def trace_horizons(dem, cells, directions, steps, radius):
     return horizons, known
 
 
-def route_horizons(site, route):
-    grid = load_grid(site)
+def route_horizons(site, route, grid=None):
+    grid = load_grid(site) if grid is None else grid
     points = route["path"]
     indices = np.unique(np.append(np.arange(0, len(points), max(1, len(points) // 220)), len(points)-1))
     midpoint = min(route["profile"], key=lambda sample: abs(sample["distanceKm"] - route["lengthKm"]/2))
@@ -98,9 +99,9 @@ def shadow_at(horizons, known, weights, elevations, azimuths):
     return shadow, support, np.where(reliable, dark.astype(np.int8), -1)
 
 
-def candidate_lighting(site, route, target, earth_start):
-    location, altitude, indices, horizons, known, weights = route_horizons(site, route)
-    dates = pd.date_range(earth_start, periods=DAYS*24*60//INTERVAL_MIN, freq=f"{INTERVAL_MIN}min")
+def candidate_lighting(site, route, target, earth_start, grid=None):
+    location, altitude, indices, horizons, known, weights = route_horizons(site, route, grid)
+    dates = pd.date_range(earth_start, periods=DAYS*24*60//INTERVAL_MIN, freq=f"{INTERVAL_MIN}min", tz="UTC")
     sun = get_solarposition(dates, location["lat"], location["lon"], altitude=max(0, altitude))
     levels, azimuths = sun.elevation.to_numpy(), sun.azimuth.to_numpy()
     fractions, support, states = shadow_at(horizons, known, weights, levels, azimuths)
@@ -113,26 +114,33 @@ def candidate_lighting(site, route, target, earth_start):
     eligible = np.flatnonzero(usable & (el_diff <= ELEVATION_TOLERANCE) & (sh_diff <= SHADOW_TOLERANCE))
     groups = [group for group in np.split(eligible, np.flatnonzero(np.diff(eligible) > 1) + 1) if len(group)]
     groups.sort(key=lambda group: -scores[group].max())
-    tz = ZoneInfo(TIMEZONES[site])
-    windows = []
-    for group in groups[:5]:
-        best = group[scores[group].argmax()]
-        render = np.unique(np.append(np.linspace(group[0], group[-1], min(7, len(group)), dtype=int), best))
-        frames = [{
+    timezone_name = TIMEZONES.get(site, NASA_ANALOGS.get(site, {}).get("timeZone", "UTC"))
+    tz = ZoneInfo(timezone_name)
+    def make_frame(index):
+        return {
             "utc": dates[index].isoformat(), "local": dates[index].to_pydatetime().astimezone(tz).isoformat(),
             "elevationDeg": float(levels[index]), "azimuthDeg": float(azimuths[index]),
             "shadowFraction": float(fractions[index]), "coverage": float(np.clip(support[index], 0, 1)),
             "states": states[index].tolist(),
-        } for index in render]
+        }
+
+    windows = []
+    for group in groups[:5]:
+        best = group[scores[group].argmax()]
+        render = np.unique(np.append(np.linspace(group[0], group[-1], min(7, len(group)), dtype=int), best))
+        frames = [make_frame(index) for index in render]
         windows.append({"startUtc": dates[group[0]].isoformat(), "endUtc": dates[group[-1]].isoformat(),
                         "startLocal": dates[group[0]].to_pydatetime().astimezone(tz).isoformat(),
                         "endLocal": dates[group[-1]].to_pydatetime().astimezone(tz).isoformat(),
-                        "timeZone": TIMEZONES[site], "frames": frames, "bestFrame": int(np.flatnonzero(render == best)[0])})
-    return {"windows": windows, "score": float(scores[usable].max()), "sampleIndices": indices.tolist(),
+                        "timeZone": timezone_name, "frames": frames, "bestFrame": int(np.flatnonzero(render == best)[0])})
+    usable_indices = np.flatnonzero(usable)
+    closest = usable_indices[scores[usable_indices].argmax()]
+    return {"windows": windows, "score": float(scores[closest]), "sampleIndices": indices.tolist(),
+            "closestFrame": None if windows else make_frame(closest),
             "reason": None if windows else "No daytime window met both the 2° Sun elevation and 10-point shadow tolerances."}
 
 
-def analyze_lighting(data, lunar_utc, earth_start):
+def analyze_lighting(data, lunar_utc, earth_start, remote_grids=None):
     paths = [SCIENCE / "kernels" / name.split("/")[-1] for name in KERNELS]
     if not all(path.is_file() for path in paths):
         return {"status": "unavailable", "reason": "The NASA SPICE kernels have not been prepared."}, {}
@@ -153,6 +161,7 @@ def analyze_lighting(data, lunar_utc, earth_start):
         message = ("The lunar Sun is below the horizon at this time." if elevation <= 0
                    else "The lunar route has insufficient known terrain horizon coverage.")
         return {**illumination, "status": "unavailable", "reason": message}, {}
-    candidates = {c["id"]: candidate_lighting(c["id"], c["route"], illumination, earth_start)
+    candidates = {c["id"]: candidate_lighting(c["id"], c["route"], illumination, earth_start,
+                                             (remote_grids or {}).get(c["id"]))
                   for c in data["candidates"] if c["status"] == "matched"}
     return illumination, candidates

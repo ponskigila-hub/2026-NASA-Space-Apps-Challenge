@@ -25,6 +25,14 @@ export interface TerrainRoute {
   corridor: { coverage: number; halfWidthM: number };
 }
 
+export interface EarthSite {
+  id: string;
+  name: string;
+  location: string;
+  description: string;
+  sourceUrl: string;
+}
+
 export interface Candidate {
   id: string;
   name: string;
@@ -34,7 +42,9 @@ export interface Candidate {
   bounds: [number, number, number, number];
   evidence: Evidence;
   status: 'matched' | 'unevaluable';
+  attempts?: number;
   reason?: string;
+  relief?: string;
   rank?: number;
   score?: number;
   featureScores?: { slope: number; roughness: number };
@@ -47,6 +57,7 @@ export interface Analysis {
   id: string;
   mode: 'live' | 'replay';
   fetchedSite?: string;
+  customImagery?: boolean;
   preset: Preset;
   dataVersion: string;
   effectiveWeights: Weights;
@@ -85,12 +96,17 @@ async function json<T>(url: string, options: RequestInit): Promise<T> {
   return response.json();
 }
 
-export async function analyze(a: Point, b: Point, preset: Preset, lunarUtc: string, earthStart: string, signal: AbortSignal) {
+export function getEarthSites(signal: AbortSignal) {
+  return json<EarthSite[]>(`${api}/earth-sites`, { signal });
+}
+
+export async function analyze(a: Point, b: Point, preset: Preset, lunarUtc: string, earthStart: string, signal: AbortSignal,
+  earth?: { earthCenter?: Point; earthSites: string[] }) {
   let job = await json<Job>(`${api}/analyses`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ a, b, preset, lunarUtc, earthStart }), signal,
+    body: JSON.stringify({ a, b, preset, lunarUtc, earthStart, ...earth }), signal,
   });
-  for (let count = 0; count < 315; count++) {
+  for (let count = 0; count < (earth ? 1100 : 315); count++) {
     if (job.status === 'complete') return job.result;
     if (job.status === 'failed') throw new Error(job.error.message);
     await new Promise(resolve => window.setTimeout(resolve, 800));
@@ -104,6 +120,10 @@ export type Replay = 'hadley' | 'rille';
 
 export function replay(kind: Replay, signal: AbortSignal) {
   return json<Analysis>(`${base}replay/${kind}/analysis.json`, { signal });
+}
+
+export function customImageryUrl(result: Analysis, siteId?: string) {
+  return result.customImagery && siteId ? `${api}/analyses/${result.id}/earth-imagery?site=${encodeURIComponent(siteId)}` : undefined;
 }
 
 export function reportUrl(result: Analysis, site: string | null, replayCase: Replay | null) {
@@ -144,6 +164,7 @@ export interface LunarLight extends Partial<LightFrame> {
   sampleIndices?: number[];
 }
 export interface EarthLight {
+  closestFrame?: LightFrame | null;
   score: number | null;
   reason?: string;
   sampleIndices?: number[];
@@ -183,7 +204,7 @@ export function applyPreset(result: Analysis, preset: Preset): Analysis {
 export async function fetchMinerals(result: Analysis, site: string, signal: AbortSignal, progress: (message: string) => void) {
   const { id } = await json<{ id: string }>(`${api}/analyses/${result.id}/emit/${encodeURIComponent(site)}`, { method: 'POST', signal });
   while (!signal.aborted) {
-    const job = await json<{ status: 'running' | 'failed'; message: string } | { status: 'complete'; result: Analysis }>(
+    const job = await json<{ status: 'queued' | 'running' | 'failed'; message: string } | { status: 'complete'; result: Analysis }>(
       `${api}/emit/${id}`, { signal });
     if (job.status === 'complete') return applyPreset(job.result, result.preset);
     if (job.status === 'failed') throw new Error(job.message);

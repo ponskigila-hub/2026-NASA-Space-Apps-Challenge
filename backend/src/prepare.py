@@ -115,7 +115,7 @@ def save_grid(name, dem, transform, crs, bounds, eligible, geog):
     print(name, meta["shape"], f"{meta['validFraction']:.1%} elevation coverage", flush=True)
 
 
-def save_relief(name, dem, transform, crs, bounds):
+def relief_image(dem, transform, crs, bounds):
     # Match Leaflet's Web Mercator image overlay so every route has local map context.
     dy, dx = np.gradient(dem, RESOLUTION)
     illumination = (1 - 0.7 * dx - 0.7 * dy) / np.sqrt(1 + dx**2 + dy**2)
@@ -128,9 +128,13 @@ def save_relief(name, dem, transform, crs, bounds):
     brightness = np.nan_to_num(np.clip(dest, 0, 1.35) / 1.35)
     rgba = np.stack([30 + 124 * brightness, 32 + 121 * brightness, 24 + 107 * brightness,
                      255 * np.isfinite(dest)], axis=-1).astype(np.uint8)
+    return Image.fromarray(rgba)
+
+
+def save_relief(name, dem, transform, crs, bounds):
     output = FRONTEND / "public" / "terrain"
     output.mkdir(exist_ok=True)
-    Image.fromarray(rgba).save(output / f"{name}-relief.webp", quality=84)
+    relief_image(dem, transform, crs, bounds).save(output / f"{name}-relief.webp", quality=84)
     (output / f"{name}-relief.json").write_text(json.dumps({"bounds": list(bounds)}))
 
 

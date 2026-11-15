@@ -44,7 +44,7 @@ def snap_endpoints(points):
     return cells, snapped
 
 
-def compute(cells):
+def compute(cells, remote_regions=()):
     grid = load_grid("moon")
     start, end = cells
     path = np.array(route_ab(grid.dem, grid.rough, grid.valid, tuple(start), tuple(end)))
@@ -59,6 +59,15 @@ def compute(cells):
         raise AnalysisError("coverage", "The lunar route corridor has less than 95% valid terrain coverage.")
     lunar = grid.profile(path, samples, coverage, support)
     candidates = [search_region(site_id, lunar["lengthKm"] * 1000, samples) for site_id in REGIONS]
+    for site_id, grid, region in remote_regions:
+        if grid is None:
+            lon, lat = region["center"]
+            candidates.append({**{key: region[key] for key in ("name", "location", "description")},
+                               "id": site_id, "center": {"lat": lat, "lon": lon},
+                               "bounds": [lon, lat, lon, lat], "status": "unevaluable", "attempts": 0,
+                               "reason": "Could not read public Copernicus elevation for this area."})
+        else:
+            candidates.append(search_region(site_id, lunar["lengthKm"] * 1000, samples, grid, region))
     candidates.sort(key=lambda candidate: (candidate["status"] != "matched", -candidate.get("score", 0), candidate["id"]))
     for index, candidate in enumerate((c for c in candidates if c["status"] == "matched"), 1):
         candidate["rank"] = index
@@ -70,7 +79,7 @@ def publish(data, requested, snapped, preset, analysis_id, science=None):
     science = science or {}
     details = science.get("candidateScience", {})
     manifest = source_manifest()
-    sources = manifest["sources"] + SOURCES
+    sources = manifest["sources"] + SOURCES + data.get("customSources", [])
 
     def evidence(route, region):
         relevant = [s for s in sources if region in s["regions"]]

@@ -36,8 +36,8 @@ def endpoint_pairs(size, target, seed):
         yield midpoint - half, midpoint + half
 
 
-def search_region(site_id, target, lunar_samples):
-    grid = load_grid(site_id)
+def search_region(site_id, target, lunar_samples, grid=None, region=None):
+    grid = load_grid(site_id) if grid is None else grid
     tolerance = max(target * 0.20, 2 * RESOLUTION)
     best = None
     coverage_rejected = False
@@ -70,7 +70,7 @@ def search_region(site_id, target, lunar_samples):
             if best is None or score_key < best[0]:
                 best = score_key, cells, samples, coverage, support, features, terrain_score
 
-    region = REGIONS[site_id]
+    region = REGIONS[site_id] if region is None else region
     result = {k: region[k] for k in ("name", "location", "description")}
     result.update(id=site_id, attempts=attempts, bounds=grid.meta["bounds"], center={"lat": region["center"][1], "lon": region["center"][0]})
     if best is None:

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import L from 'leaflet';
 import type { RouteOverlay } from './analysisApi';
 import wacMetadata from '../public/terrain/hadley-wac.json';
@@ -42,6 +42,7 @@ interface Props {
   resetSignal: number;
   replay: boolean;
   overlay: RouteOverlay[];
+  overlayControls?: ReactNode;
   snapped?: Record<Endpoint, { requested: Point; snapped: Point; snapDistanceM: number }>;
   onPick: (point: Point) => void;
   onMove: (endpoint: Endpoint, point: Point) => void;
@@ -205,14 +206,14 @@ export default function LunarMap(props: Props) {
     }
   }, [props.highlight]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (props.resetSignal) resetView();
   }, [props.resetSignal]);
 
   return (
     <section className="map-shell" aria-label="Interactive lunar map">
       <div className="map-header">
-        <h2><Crosshair size={18} /> Lunar map</h2>
+        <h2 id="lunar-map-title"><Crosshair size={18} /> Lunar map</h2>
         <div className="map-source" role="status">
           <span className={`status-dot status-${source}`} />
           {source === 'live' ? 'Live NASA imagery' : source === 'loading' ? 'Loading NASA imagery' : 'Hadley offline imagery'}
@@ -231,6 +232,7 @@ export default function LunarMap(props: Props) {
           <button type="button" className="map-glass reset-map" aria-label="Reset view" title="Reset view"
             onClick={() => resetView()}><Crosshair size={18} /></button>
         </div>
+        {props.overlayControls}
         <div className="map-glass map-hint" role="status">
           <MousePointer2 size={15} />
           {props.active ? `Select point ${props.active} on the map` : props.points.A || props.points.B ? 'Drag a pin to move it' : 'Choose a point in the route planner'}

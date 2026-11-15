@@ -10,6 +10,7 @@ import h5py
 import rasterio
 
 from src.config import FRONTEND, MOON_RADIUS
+from src.fetch_emit import remote_spectra
 from src.lighting import shadow_at, trace_horizons
 from src.minerals import extract_bands, mineral_score
 from src.prepare_emit import main as prepare_emit
@@ -77,6 +78,18 @@ class ScienceTests(unittest.TestCase):
             self.assertTrue(np.isnan(bands[1, 0, 1]))
             self.assertTrue(np.isnan(bands[2]).all())
             self.assertTrue(np.isnan(bands[:, 1]).all())
+            route = {"lengthKm": .84, "profile": [
+                {"distanceKm": km, "point": {"lat": lat, "lon": lon}}
+                for km, (lat, lon) in zip(np.linspace(0, .84, 4),
+                                          [(.95, .05), (.95, .15), (.85, .05), (.85, .15)])
+            ]}
+            with h5py.File(reflectance) as source, h5py.File(mask) as quality:
+                evidence, values = remote_spectra(reflectance.stem, "test", source, quality, route)
+            self.assertEqual(evidence["status"], "insufficient")
+            self.assertEqual(values, {})
+            # Only two of four pixels are clear and geolocated.
+            self.assertEqual([point.get("pixels", 0) for point in evidence["spectrum"]], [2, 0, 0, 2])
+
 
     def test_shared_ranking_features_and_replay_evidence(self):
         candidates = [

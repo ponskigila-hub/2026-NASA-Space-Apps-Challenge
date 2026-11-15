@@ -25,7 +25,18 @@ class Grid:
             self.slope = data["slope"]
             self.valid = data["eligible"]
             self.windows = data["windows"]
-        self.meta = json.loads((PROCESSED / f"{name}.json").read_text())
+        self.set_metadata(json.loads((PROCESSED / f"{name}.json").read_text()))
+
+    @classmethod
+    def from_arrays(cls, dem, slope, rough, eligible, windows, meta):
+        grid = cls.__new__(cls)
+        grid.dem, grid.slope, grid.rough = dem, slope, rough
+        grid.valid, grid.windows = eligible, windows
+        grid.set_metadata(meta)
+        return grid
+
+    def set_metadata(self, meta):
+        self.meta = meta
         self.transform = Affine(*self.meta["transform"])
         self.to_metric = Transformer.from_crs(self.meta["geographicCrs"], self.meta["crs"], always_xy=True)
         self.to_geo = Transformer.from_crs(self.meta["crs"], self.meta["geographicCrs"], always_xy=True)

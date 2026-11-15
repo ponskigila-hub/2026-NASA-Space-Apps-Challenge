@@ -1,0 +1,60 @@
+"""AstroScan search centers for Earth analogs documented by NASA."""
+
+NASA_ANALOGS = {
+    "sp-crater": {
+        "name": "SP Crater",
+        "location": "Arizona, United States",
+        "center": {"lat": 35.5822, "lon": -111.6318},
+        "timeZone": "America/Phoenix",
+        "description": "NASA ran the Artemis JETT3 field test east of this cinder cone.",
+        "sourceUrl": "https://ntrs.nasa.gov/citations/20230010686",
+    },
+    "black-point-lava-flow": {
+        "name": "Black Point Lava Flow",
+        "location": "Arizona, United States",
+        "center": {"lat": 35.6929, "lon": -111.46},
+        "timeZone": "America/Phoenix",
+        "description": "NASA and JAXA tested pressurized rover operations in this lava field.",
+        "sourceUrl": "https://www.nasa.gov/humans-in-space/nasa-practices-rover-operations-in-simulated-lunar-environment/",
+    },
+    "lava-beds": {
+        "name": "Lava Beds National Monument",
+        "location": "California, United States",
+        "center": {"lat": 41.7142, "lon": -121.5098},
+        "timeZone": "America/Los_Angeles",
+        "description": "NASA features this area for lava tube research. AstroScan compares surface terrain around the monument.",
+        "sourceUrl": "https://science.nasa.gov/solar-system/planetary-analogs/",
+    },
+    "meteor-crater": {
+        "name": "Meteor Crater",
+        "location": "Arizona, United States",
+        "center": {"lat": 35.0216, "lon": -111.0278},
+        "timeZone": "America/Phoenix",
+        "description": "NASA documents field training on the rim and ejecta of this impact crater.",
+        "sourceUrl": "https://www.nasa.gov/wp-content/uploads/2015/12/425257main_drats_guide_rev_a2006.pdf",
+    },
+    "cinder-lake": {
+        "name": "Cinder Lake",
+        "location": "Arizona, United States",
+        "center": {"lat": 35.3225, "lon": -111.5181},
+        "timeZone": "America/Phoenix",
+        "description": "The USGS built crater fields in volcanic cinders here for Apollo astronaut training.",
+        "sourceUrl": "https://science.nasa.gov/earth/arizonas-lunar-craters/",
+    },
+    "inferno-chasm": {
+        "name": "Inferno Chasm",
+        "location": "Idaho, United States",
+        "center": {"lat": 42.9667, "lon": -113.1903},
+        "timeZone": "America/Boise",
+        "description": "NASA researchers studied its volcanic channel as a possible analog for lunar rilles.",
+        "sourceUrl": "https://ntrs.nasa.gov/citations/20150001337",
+    },
+    "kilauea": {
+        "name": "Kīlauea",
+        "location": "Hawaiʻi, United States",
+        "center": {"lat": 19.4252, "lon": -155.2746},
+        "timeZone": "Pacific/Honolulu",
+        "description": "NASA’s Analog Explorer compares fieldwork on Kīlauea’s basalt with Apollo 15 at Hadley Rille.",
+        "sourceUrl": "https://science.nasa.gov/solar-system/analog-explorer/",
+    },
+}
