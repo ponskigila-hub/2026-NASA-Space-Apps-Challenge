@@ -1,4 +1,4 @@
-import type { Point, ProfileSample, RouteResult } from './lunar';
+import type { LunarRegion, Point, ProfileSample, RouteResult } from './lunar';
 
 export const presets = {
   rover_navigation: 'Rover navigation',
@@ -54,6 +54,7 @@ export interface Candidate {
 }
 
 export interface Analysis {
+  lunarRegion?: LunarRegion;
   id: string;
   mode: 'live' | 'replay';
   fetchedSite?: string;
@@ -100,13 +101,18 @@ export function getEarthSites(signal: AbortSignal) {
   return json<EarthSite[]>(`${api}/earth-sites`, { signal });
 }
 
+export async function getLunarRegions(signal: AbortSignal) {
+  const config = await json<{ lunarRegions?: LunarRegion[] }>(`${api}/config`, { signal });
+  return config.lunarRegions ?? [];
+}
+
 export async function analyze(a: Point, b: Point, preset: Preset, lunarUtc: string, earthStart: string, signal: AbortSignal,
-  earth?: { earthCenter?: Point; earthSites: string[] }) {
+  options?: { earthCenter?: Point; earthSites: string[]; lunarRegion?: string }) {
   let job = await json<Job>(`${api}/analyses`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ a, b, preset, lunarUtc, earthStart, ...earth }), signal,
+    body: JSON.stringify({ a, b, preset, lunarUtc, earthStart, ...options }), signal,
   });
-  for (let count = 0; count < (earth ? 1100 : 315); count++) {
+  for (let count = 0; count < (options ? 1100 : 315); count++) {
     if (job.status === 'complete') return job.result;
     if (job.status === 'failed') throw new Error(job.error.message);
     await new Promise(resolve => window.setTimeout(resolve, 800));

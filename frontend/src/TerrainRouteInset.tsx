@@ -1,17 +1,18 @@
 import L from 'leaflet';
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { Candidate, RouteOverlay, TerrainRoute } from './analysisApi';
-import type { Point } from './lunar';
+import type { LunarRegion, Point } from './lunar';
 import wacMetadata from '../public/terrain/hadley-wac.json';
 
 const toLatLng = ({ lat, lon }: Point): L.LatLngTuple => [lat, lon];
 const base = import.meta.env.BASE_URL;
 const moonBounds = wacMetadata.bounds as [number, number, number, number];
 
-export default function TerrainRouteInset({ name, route, overlays, site, caption, description, marker, pathColor = '#e1f78e' }: {
+export default function TerrainRouteInset({ name, route, overlays, site, lunarRegion, caption, description, marker, pathColor = '#e1f78e' }: {
   name: string;
   route: TerrainRoute;
   overlays: RouteOverlay[];
+  lunarRegion?: LunarRegion;
   site?: Pick<Candidate, 'id' | 'bounds' | 'relief'>;
   caption?: ReactNode;
   description?: string;
@@ -22,8 +23,8 @@ export default function TerrainRouteInset({ name, route, overlays, site, caption
   const highlights = useRef<L.LayerGroup | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
   const lunar = !site;
-  const [west, south, east, north] = site?.bounds ?? moonBounds;
-  const image = site ? site.relief ?? `${base}terrain/${site.id}-relief.webp` : `${base}terrain/hadley-wac.webp`;
+  const [west, south, east, north] = site?.bounds ?? (lunarRegion?.relief ? lunarRegion.bounds : moonBounds);
+  const image = site ? site.relief ?? `${base}terrain/${site.id}-relief.webp` : base + (lunarRegion?.relief ?? 'terrain/hadley-wac.webp');
 
   useEffect(() => {
     if (!container.current || !route.path.length) return;

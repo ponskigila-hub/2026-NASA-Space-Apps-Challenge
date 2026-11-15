@@ -10,7 +10,7 @@ from rasterio.errors import RasterioIOError
 from rasterio.merge import merge
 from rasterio.warp import reproject, Resampling, transform_bounds
 
-from .config import RESOLUTION, SEARCH_BUFFER
+from .config import RESOLUTION, SEARCH_BUFFER, SEARCH_HALF_WIDTH
 from .prepare import (EARTH_BUCKET, build_window_index, centers, destination, earth_grid,
                       earth_urls, generate_features, relief_image)
 from .terrain import Grid
@@ -24,16 +24,22 @@ def custom_region(point):
     zone = math.floor((lon + 180) / 6) + 1
     return {"name": "Custom Earth region", "location": f"{lat:.4f}°, {lon:.4f}°",
             "center": (lon, lat), "crs": f"EPSG:{32600 + zone if lat >= 0 else 32700 + zone}",
-            "description": "An 84 × 84 km search area centered on the supplied coordinates."}
+            "description": "Terrain search centered on the supplied coordinates.", "searchHalfWidthM": 50_000}
 
 
 def read_terrain(region, site_id="custom"):
     crs = region["crs"]
     bounds = earth_grid(region)
     geobounds = transform_bounds(crs, GEOGRAPHIC_CRS, *bounds)
+    if geobounds[0] > geobounds[2]:
+        bounds = earth_grid({**region, "searchHalfWidthM": SEARCH_HALF_WIDTH})
+        geobounds = transform_bounds(crs, GEOGRAPHIC_CRS, *bounds)
     dem, transform = destination(bounds)
+    # Parallel ranges can leave TIFF blocks incomplete on slower connections.
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_CONNECTTIMEOUT="5",
-                      GDAL_HTTP_TIMEOUT="12", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"), ExitStack() as stack:
+                      GDAL_HTTP_TIMEOUT="12", GDAL_HTTP_MULTIRANGE="SERIAL",
+                      GDAL_HTTP_MAX_RETRY="1", GDAL_HTTP_RETRY_DELAY="1",
+                      CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"), ExitStack() as stack:
         tiles = []
         for url in earth_urls(geobounds):
             try:

@@ -1,9 +1,10 @@
 """Run an analysis with prepared terrain and build the published result."""
 import numpy as np
 
-from .config import (ALGORITHM_VERSION, MAX_LENGTH, MIN_COVERAGE, MOON_BOUNDS, MOON_FRAME, MOON_RADIUS,
+from .config import (ALGORITHM_VERSION, MAX_LENGTH, MIN_COVERAGE, MOON_FRAME, MOON_RADIUS,
                      RESOLUTION, TERRAIN_WEIGHTS, REGIONS)
 from .earth_search import search_region
+from .lunar_regions import DEFAULT_LUNAR_REGION, LUNAR_REGIONS, lunar_grid_name, lunar_region, lunar_source, terrain_version
 from .routing import path_distances, route_ab, snap_to_valid
 from .terrain import load_grid, lunar_distance, source_manifest
 
@@ -21,14 +22,15 @@ class AnalysisError(Exception):
         self.code = code
 
 
-def snap_endpoints(points):
-    grid = load_grid("moon")
-    west, south, east, north = MOON_BOUNDS
+def snap_endpoints(points, region_id=DEFAULT_LUNAR_REGION):
+    region = LUNAR_REGIONS[region_id]
+    grid = load_grid(lunar_grid_name(region_id))
+    west, south, east, north = region["bounds"]
     cells = []
     for label in ("A", "B"):
         point = points[label]
         if not (west <= point["lon"] <= east and south <= point["lat"] <= north):
-            raise AnalysisError("outside_coverage", f"Point {label} is outside the Hadley Rille terrain coverage.")
+            raise AnalysisError("outside_coverage", f"Point {label} is outside the {region['name']} terrain coverage.")
         cell = snap_to_valid(grid.valid, *grid.project(point))
         if cell is None:
             raise AnalysisError("cannot_snap", f"Point {label} is more than 180 m from an eligible terrain cell.")
@@ -40,12 +42,12 @@ def snap_endpoints(points):
     direct = lunar_distance(snapped["A"], snapped["B"])
     # The local azimuthal-equidistant map's metric distances are at least the corresponding spherical distances.
     if direct > MAX_LENGTH:
-        raise AnalysisError("length_limit", "The snapped points are more than 50 km apart.")
+        raise AnalysisError("length_limit", f"The snapped points are more than {MAX_LENGTH / 1000:g} km apart.")
     return cells, snapped
 
 
-def compute(cells, remote_regions=()):
-    grid = load_grid("moon")
+def compute(cells, remote_regions=(), region_id=DEFAULT_LUNAR_REGION):
+    grid = load_grid(lunar_grid_name(region_id))
     start, end = cells
     path = np.array(route_ab(grid.dem, grid.rough, grid.valid, tuple(start), tuple(end)))
     if len(path) < 2:
@@ -53,7 +55,7 @@ def compute(cells, remote_regions=()):
     if path_distances(grid.dem, path)[3][-1] > MAX_LENGTH:
         path = np.array(route_ab(grid.dem, grid.rough, grid.valid, tuple(start), tuple(end), True))
         if len(path) < 2 or path_distances(grid.dem, path)[3][-1] > MAX_LENGTH:
-            raise AnalysisError("length_limit", "The shortest eligible lunar route exceeds 50 km.")
+            raise AnalysisError("length_limit", f"The shortest eligible lunar route exceeds {MAX_LENGTH / 1000:g} km.")
     samples, coverage, support = grid.corridor(path)
     if coverage < MIN_COVERAGE:
         raise AnalysisError("coverage", "The lunar route corridor has less than 95% valid terrain coverage.")
@@ -71,15 +73,19 @@ def compute(cells, remote_regions=()):
     candidates.sort(key=lambda candidate: (candidate["status"] != "matched", -candidate.get("score", 0), candidate["id"]))
     for index, candidate in enumerate((c for c in candidates if c["status"] == "matched"), 1):
         candidate["rank"] = index
-    return {"lunar": lunar, "candidates": candidates}
+    return {"lunar": lunar, "lunarRegion": lunar_region(region_id), "candidates": candidates}
 
 
 def publish(data, requested, snapped, preset, analysis_id, science=None):
     from .science import SOURCES, apply_preset, rankings, science_version
     science = science or {}
     details = science.get("candidateScience", {})
-    manifest = source_manifest()
-    sources = manifest["sources"] + SOURCES + data.get("customSources", [])
+    region = data.get("lunarRegion") or lunar_region(DEFAULT_LUNAR_REGION)
+    sources = source_manifest()["sources"] + SOURCES + data.get("customSources", [])
+    if region["id"] != DEFAULT_LUNAR_REGION:
+        sources = [source for source in sources if "moon" not in source["regions"] or source["id"] == "NAIF-DE440"]
+        region_source = lunar_source(region)
+        sources.append(region_source)
 
     def evidence(route, region):
         relevant = [s for s in sources if region in s["regions"]]
@@ -90,6 +96,8 @@ def publish(data, requested, snapped, preset, analysis_id, science=None):
                 "confidenceBasis": "Valid corridor support at 90 m. High ≥99%, moderate ≥95%."}
 
     lunar = {**data["lunar"], "evidence": evidence(data["lunar"], "moon")}
+    if region["id"] != DEFAULT_LUNAR_REGION:
+        lunar["evidence"]["sourceIds"].append(region_source["id"])
     endpoints = {
         label: {
             "requested": requested[label], "snapped": snapped[label],
@@ -100,7 +108,7 @@ def publish(data, requested, snapped, preset, analysis_id, science=None):
                   for c in data["candidates"]]
     result = {
         "id": analysis_id, "schemaVersion": 2, "algorithmVersion": ALGORITHM_VERSION,
-        "dataVersion": manifest["dataVersion"], "preset": preset, "effectiveWeights": TERRAIN_WEIGHTS,
+        "dataVersion": terrain_version(region["id"]), "lunarRegion": region, "preset": preset, "effectiveWeights": TERRAIN_WEIGHTS,
         "scienceVersion": science_version(), "mode": "live", "endpoints": endpoints,
         "lighting": science.get("lighting"), "minerals": science.get("minerals"),
         "rankings": rankings(candidates),

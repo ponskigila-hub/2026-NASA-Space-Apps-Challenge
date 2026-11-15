@@ -145,6 +145,7 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
     }
   }
   const [band, setBand] = useState<MineralBand>('oneMicron');
+  const moonName = result.lunarRegion?.shortName ?? 'Hadley';
   const moon = result.minerals;
   const earth = site?.minerals;
   const score = earth?.bandScores?.[band];
@@ -175,7 +176,7 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
     <p className="mission-reading-guide">Choose a wavelength range to compare absorption signals. Similar signals can point to similar minerals.</p>
     <div className="mineral-controls">
       <p className="mineral-locations">
-        <strong data-body="moon">Hadley</strong>
+        <strong data-body="moon">{moonName}</strong>
         {site && <> · <strong data-body="earth">{site.name}</strong></>}
       </p>
       <div className="segmented" role="group" aria-label="Rock signal wavelength range">
@@ -195,7 +196,7 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
         <div className="profile-heading"><h3>Route reflectance</h3></div>
         {hasMoon || hasEarth ? <>
           <ul className="science-legend">
-            {hasMoon && <li><i style={{ background: spectrumColors.moon }} />Hadley · M³</li>}
+            {hasMoon && <li><i style={{ background: spectrumColors.moon }} />{moonName} · M³</li>}
             {hasEarth && <li><i style={{ background: spectrumColors.earth }} />{site?.name} · EMIT</li>}
             <li><i className="mineral-band-key" />Band search range</li>
           </ul>
@@ -209,7 +210,7 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
                   stroke="var(--muted)" tick={{ fontSize: 11 }} />
                 <Tooltip contentStyle={{ background: 'var(--panel)', borderColor: 'var(--line)', borderRadius: 8 }}
                   labelFormatter={value => `${Number(value).toFixed(0)} nm`} formatter={value => percent(Number(value))} />
-                {hasMoon && <Line dataKey="moon" name="Hadley" stroke={spectrumColors.moon} strokeWidth={2} dot={false} isAnimationActive={false} />}
+                {hasMoon && <Line dataKey="moon" name={moonName} stroke={spectrumColors.moon} strokeWidth={2} dot={false} isAnimationActive={false} />}
                 {hasEarth && <Line dataKey="earth" name={site?.name} stroke={spectrumColors.earth} strokeWidth={2} dot={false} isAnimationActive={false} />}
               </LineChart>
             </ResponsiveContainer>
@@ -220,7 +221,7 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
 
       <div className="profile mineral-stats" data-mineral-panel>
         <div className="profile-heading"><h3>Rock signal coverage</h3><span>{bandLabel[band]}</span></div>
-        <BandStats body="moon" name="Hadley · M³" evidence={moon} band={band} />
+        <BandStats body="moon" name={`${moonName} · M³`} evidence={moon} band={band} />
         {site && <BandStats body="earth" name={`${site.name} · EMIT`} evidence={earth} band={band} />}
         {score !== undefined && <p className="mineral-match"><strong>{percent(score)}</strong> match in absorption depth and band center</p>}
       </div>
@@ -242,8 +243,8 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
           <li><i style={{ background: '#777d89' }} />No usable band</li>
         </ul>
         <div className="mineral-route-site" data-body="moon">
-          <RouteStrip name="Hadley" segments={moonSupport} limit={limit} cursor={cursor === undefined ? undefined : distance}
-            empty="No band measurements for Hadley." />
+          <RouteStrip name={moonName} segments={moonSupport} limit={limit} cursor={cursor === undefined ? undefined : distance}
+            empty={`No band measurements for ${moonName}.`} />
         </div>
         {site?.route && <div className="mineral-route-site" data-body="earth">
           <RouteStrip name={site.name} segments={earthSupport} limit={limit} cursor={cursor === undefined ? undefined : distance}
@@ -253,8 +254,8 @@ function MineralComparison({ result, site, limit, inspect, onMinerals }: {
       <section className="mineral-route-group">
         <h4>Mapped rock types</h4>
         <div className="mineral-route-site" data-body="moon">
-          <RouteStrip name="Hadley" segments={rockSegments(moon)} limit={limit} cursor={cursor === undefined ? undefined : distance}
-            empty="No mapped geology for Hadley." />
+          <RouteStrip name={moonName} segments={rockSegments(moon)} limit={limit} cursor={cursor === undefined ? undefined : distance}
+            empty={`No mapped geology for ${moonName}.`} />
           <RockLegend evidence={moon} />
         </div>
         {site?.route && <div className="mineral-route-site" data-body="earth">

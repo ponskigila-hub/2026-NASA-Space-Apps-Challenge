@@ -14,7 +14,7 @@ def report_text(result, site):
     lines = [title, "", f"Analysis `{result['id']}` ({result['mode']})",
              f"Data `{result['dataVersion']}` · Model `{result['algorithmVersion']}`", "",
              f"**Objective** {PRESETS[result['preset']]} · Effective weights ({weights})", "",
-             "## Lunar traverse", "", f"Frame — {result['moonFrame']}",
+             "## Lunar traverse", "", f"Region — {result.get('lunarRegion', {}).get('name', 'Hadley–Apennine')}", f"Frame — {result['moonFrame']}",
              f"Traverse length {lunar['lengthKm']:.2f} km · Direct {result['directKm']:.2f} km",
              f"Ascent {lunar['ascentM']:.0f} m · Descent {lunar['descentM']:.0f} m · Maximum grade {lunar['steepestDeg']:.1f}°",
              f"Valid corridor {lunar['corridor']['coverage']:.1%} · Coverage confidence {lunar['evidence']['confidence']}"]

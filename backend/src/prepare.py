@@ -49,7 +49,7 @@ def checksum(path):
 def earth_grid(region):
     transform = Transformer.from_crs("EPSG:4326", region["crs"], always_xy=True)
     x, y = transform.transform(*region["center"])
-    h = SEARCH_HALF_WIDTH + SEARCH_BUFFER
+    h = region.get("searchHalfWidthM", SEARCH_HALF_WIDTH) + SEARCH_BUFFER
     return x - h, y - h, x + h, y + h
 
 
@@ -86,7 +86,7 @@ def build_window_index(slope, rough, eligible):
     arrays = [valid, np.where(valid, slope, 0), np.where(valid, rough, 0)]
     integrals = [np.pad(a.cumsum(axis=0, dtype=float).cumsum(axis=1), ((1, 0), (1, 0))) for a in arrays]
     output = []
-    for km in (4, 8, 16, 32, 48, 64, 78):
+    for km in (4, 8, 16, 32, 48, 64, 78, 88, 96):
         size = round(km * 1000 / RESOLUTION)
         stride = size // 2
         rows, cols = eligible.shape
@@ -100,17 +100,17 @@ def build_window_index(slope, rough, eligible):
     return np.array(output, dtype=float).reshape(-1, 6)
 
 
-def save_grid(name, dem, transform, crs, bounds, eligible, geog):
+def save_grid(name, dem, transform, crs, bounds, eligible, geog, *, lunar=False):
     slope, rough = generate_features(dem)
     eligible &= np.isfinite(dem) & np.isfinite(slope) & np.isfinite(rough)
-    index = build_window_index(slope, rough, eligible) if name != "moon" else np.empty((0, 6))
+    index = build_window_index(slope, rough, eligible) if not lunar else np.empty((0, 6))
     np.savez_compressed(PROCESSED / f"{name}.npz", dem=dem, slope=slope, rough=rough, eligible=eligible,
                         windows=index)
     meta = {"transform": list(transform)[:6], "crs": crs, "bounds": list(bounds), "geographicCrs": geog,
             "gridSpacingM": RESOLUTION, "validFraction": float(np.mean(np.isfinite(dem))),
             "shape": list(dem.shape)}
     (PROCESSED / f"{name}.json").write_text(json.dumps(meta, indent=2))
-    if name != "moon":
+    if not lunar:
         save_relief(name, dem, transform, crs, bounds)
     print(name, meta["shape"], f"{meta['validFraction']:.1%} elevation coverage", flush=True)
 
@@ -154,7 +154,7 @@ def centers(transform, shape):
     return np.broadcast_arrays(x, y)
 
 
-def prepare_moon():
+def resample_sldem(bounds, crs):
     urls = [f"{PDS}/{LUNAR_TILE}{suffix}" for suffix in (".jp2", "_aux.xml", "_jp2.lbl")]
     with ThreadPoolExecutor(max_workers=3) as pool:
         image, aux, label = list(pool.map(download, urls))
@@ -164,23 +164,28 @@ def prepare_moon():
     metadata = ElementTree.parse(aux)
     scale = float(metadata.findtext(".//Scale"))
     nodata = float(metadata.findtext(".//NoDataValue"))
-    west, south, east, north = MOON_BOUNDS
+    west, south, east, north = bounds
     with rasterio.open(image) as source:
         w = from_bounds(west - 0.1, south - 0.1, east + 0.1, north + 0.1, source.transform)
         window = Window(floor(w.col_off), floor(w.row_off), ceil(w.width) + 2, ceil(w.height) + 2)
         raw = source.read(1, window=window)
         source_transform = source.window_transform(window)
     elevations = np.where(raw == nodata, np.nan, raw * scale).astype(np.float32)
-    dem, transform = destination(transform_bounds(MOON_GEO, MOON_CRS, *MOON_BOUNDS))
+    dem, transform = destination(transform_bounds(MOON_GEO, crs, *bounds))
     reproject(elevations, dem, src_transform=source_transform, src_crs=MOON_GEO, src_nodata=np.nan,
-              dst_transform=transform, dst_crs=MOON_CRS, dst_nodata=np.nan, resampling=Resampling.average)
+              dst_transform=transform, dst_crs=crs, dst_nodata=np.nan, resampling=Resampling.average)
     x, y = centers(transform, dem.shape)
-    lng, lat = Transformer.from_crs(MOON_CRS, MOON_GEO, always_xy=True).transform(x, y)
+    lng, lat = Transformer.from_crs(crs, MOON_GEO, always_xy=True).transform(x, y)
     eligible = (lng >= west) & (lng <= east) & (lat >= south) & (lat <= north)
-    save_grid("moon", dem, transform, MOON_CRS, MOON_BOUNDS, eligible, MOON_GEO)
+    return dem, transform, eligible, urls, (image, aux, label)
+
+
+def prepare_moon():
+    dem, transform, eligible, urls, files = resample_sldem(MOON_BOUNDS, MOON_CRS)
+    save_grid("moon", dem, transform, MOON_CRS, MOON_BOUNDS, eligible, MOON_GEO, lunar=True)
     return {
         "id": LUNAR_TILE.upper(), "regions": ["moon"], "version": "V2.0", "kind": "elevation",
-        "url": urls[2], "files": [{"url": url, "sha256": checksum(path)} for url, path in zip(urls, (image, aux, label))],
+        "url": urls[2], "files": [{"url": url, "sha256": checksum(path)} for url, path in zip(urls, files)],
         "coverage": MOON_BOUNDS, "crs": MOON_FRAME, "verticalReference": "Height above a 1,737,400 m lunar sphere",
         "units": "m", "nativeResolutionM": 59.225, "analysisResolutionM": RESOLUTION,
         "license": "NASA Planetary Data System public archive",

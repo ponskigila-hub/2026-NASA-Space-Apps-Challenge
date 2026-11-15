@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import sys
 
+from .lunar_regions import DEFAULT_LUNAR_REGION
 from .pipeline import AnalysisError, compute
 
 
@@ -36,7 +37,8 @@ def compute_remote(request):
     selections = request["regions"].items()
     with ThreadPoolExecutor(max_workers=3) as pool:
         prepared = list(pool.map(read_site, selections))
-    data = compute(request["cells"], [region for region, _, _ in prepared])
+    data = compute(request["cells"], [region for region, _, _ in prepared],
+                   request.get("lunarRegion", DEFAULT_LUNAR_REGION))
     data["customSources"] = [source for _, _, sources in prepared for source in sources]
     candidates = {candidate["id"]: candidate for candidate in data["candidates"]}
     grids = {}
@@ -56,6 +58,8 @@ def main():
             output = {"data": enrich(request["terrain"], request["lunarUtc"], request["earthStart"])}
         elif sys.argv[1:] == ["custom"]:
             output = compute_remote(request)
+        elif isinstance(request, dict):
+            output = {"data": compute(request["cells"], region_id=request["lunarRegion"])}
         else:
             output = {"data": compute(request)}
     except AnalysisError as error:

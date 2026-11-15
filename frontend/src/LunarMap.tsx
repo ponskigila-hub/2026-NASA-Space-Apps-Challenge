@@ -3,14 +3,13 @@ import L from 'leaflet';
 import type { RouteOverlay } from './analysisApi';
 import wacMetadata from '../public/terrain/hadley-wac.json';
 import { Crosshair, Minus, Plus, MousePointer2, Navigation, RotateCcw } from 'lucide-react';
-import { formatPoint, HADLEY_CENTER, lunarDistance, type Endpoint, type Endpoints, type Point, type RouteResult } from './lunar';
+import { formatPoint, lunarDistance, type LunarRegion, type Endpoint, type Endpoints, type Point, type RouteResult } from './lunar';
 
 const BASE = import.meta.env.BASE_URL;
 const WMTS = 'https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0';
 const HADLEY_BOUNDS: L.LatLngBoundsExpression = [[23.7, -1], [29.1, 8.9]];
 const [wacWest, wacSouth, wacEast, wacNorth] = wacMetadata.bounds;
 const LOCAL_WAC: L.LatLngBoundsExpression = [[wacSouth, wacWest], [wacNorth, wacEast]];
-const ANALYSIS_BOUNDS: L.LatLngBoundsExpression = [[25.4, 2.5], [27, 4.9]];
 const MAP_BOUNDS: L.LatLngBoundsExpression = [[-90, -180], [90, 180]];
 type MapSource = 'loading' | 'live' | 'local';
 
@@ -35,6 +34,7 @@ function continuousPath(path: Point[]): L.LatLngTuple[] {
 }
 
 interface Props {
+  region: LunarRegion;
   points: Endpoints;
   active: Endpoint | null;
   route: RouteResult | null;
@@ -54,13 +54,15 @@ export default function LunarMap(props: Props) {
   const layers = useRef<{ points: L.LayerGroup; route: L.LayerGroup; highlight: L.LayerGroup } | null>(null);
   const current = useRef(props);
   current.current = props;
-  const [coordinate, setCoordinate] = useState(HADLEY_CENTER);
+  const [west, south, east, north] = props.region.bounds;
+  const analysisBounds: L.LatLngBoundsExpression = [[south, west], [north, east]];
+  const [coordinate, setCoordinate] = useState<Point>({ lat: (south + north) / 2, lon: (west + east) / 2 });
   const [source, setSource] = useState<MapSource>('loading');
   const [mapAttempt, setMapAttempt] = useState(0);
 
   function resetView(instance = map.current) {
     if (!instance) return;
-    instance.fitBounds(ANALYSIS_BOUNDS, { animate: false, padding: [10, 10], maxZoom: 9 });
+    instance.fitBounds(analysisBounds, { animate: false, padding: [10, 10], maxZoom: 9 });
   }
 
   useEffect(() => {
@@ -76,9 +78,13 @@ export default function LunarMap(props: Props) {
     const coveragePane = instance.createPane('coverage');
     coveragePane.style.zIndex = '410';
     pane.style.zIndex = '199';
-    L.imageOverlay(`${BASE}hadley-basemap.webp`, HADLEY_BOUNDS, { pane: 'localImagery' }).addTo(instance);
-    L.imageOverlay(`${BASE}terrain/hadley-wac.webp`, LOCAL_WAC, { pane: 'localImagery' }).addTo(instance);
-    L.rectangle(ANALYSIS_BOUNDS, { pane: 'coverage', color: '#e1f78e', weight: 1, opacity: 0.7,
+    if (props.region.relief) {
+      L.imageOverlay(BASE + props.region.relief, analysisBounds, { pane: 'localImagery' }).addTo(instance);
+    } else {
+      L.imageOverlay(`${BASE}hadley-basemap.webp`, HADLEY_BOUNDS, { pane: 'localImagery' }).addTo(instance);
+      L.imageOverlay(`${BASE}terrain/hadley-wac.webp`, LOCAL_WAC, { pane: 'localImagery' }).addTo(instance);
+    }
+    L.rectangle(analysisBounds, { pane: 'coverage', color: '#e1f78e', weight: 1, opacity: 0.7,
       fill: false, dashArray: '5 6', interactive: false }).addTo(instance);
     layers.current = {
       route: L.layerGroup().addTo(instance),
@@ -216,7 +222,7 @@ export default function LunarMap(props: Props) {
         <h2 id="lunar-map-title"><Crosshair size={18} /> Lunar map</h2>
         <div className="map-source" role="status">
           <span className={`status-dot status-${source}`} />
-          {source === 'live' ? 'Live NASA imagery' : source === 'loading' ? 'Loading NASA imagery' : 'Hadley offline imagery'}
+          {source === 'live' ? 'Live NASA imagery' : source === 'loading' ? 'Loading NASA imagery' : props.region.relief ? 'Offline elevation relief' : 'Hadley offline imagery'}
           {source === 'local' && !props.replay && <button type="button" className="source-retry" aria-label="Retry NASA imagery"
             onClick={() => setMapAttempt(value => value + 1)}><RotateCcw size={14} /></button>}
         </div>

@@ -23,6 +23,7 @@ from src.config import (ALGORITHM_VERSION, CACHE, CORRIDOR_WIDTH, MAX_GRADE, MAX
                         MOON_BOUNDS, MOON_FRAME, MOON_RADIUS, PRESETS, RESOLUTION, ROOT, ROUGHNESS_WINDOW,
                         SEARCH_DEADLINE, SNAP_RADIUS, TERRAIN_WEIGHTS)
 from src.earth_imagery import imagery_enabled, satellite_image
+from src.lunar_regions import available_lunar_regions, terrain_version
 from src.pipeline import AnalysisError, publish, snap_endpoints
 from src.reports import export_bundle
 from src.science import SOURCES, apply_preset, rankings, science_version
@@ -51,6 +52,7 @@ class AnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     a: Point
     b: Point
+    lunarRegion: Literal["hadley", "serenitatis"] = "hadley"
     earthCenter: EarthCenter | None = None
     earthSite: str | None = None
     earthSites: list[str] = Field(default_factory=list, max_length=len(NASA_ANALOGS))
@@ -107,9 +109,9 @@ class Analyses:
 
     def submit(self, request):
         requested = {"A": request.a.model_dump(), "B": request.b.model_dump()}
-        cells, snapped = snap_endpoints(requested)
+        cells, snapped = snap_endpoints(requested, request.lunarRegion)
         cache_key = digest([
-            cells, ALGORITHM_VERSION, source_manifest()["dataVersion"], RESOLUTION, SNAP_RADIUS,
+            cells, request.lunarRegion, ALGORITHM_VERSION, terrain_version(request.lunarRegion), RESOLUTION, SNAP_RADIUS,
             MAX_LENGTH, MAX_GRADE, CORRIDOR_WIDTH, MIN_COVERAGE, ROUGHNESS_WINDOW, TERRAIN_WEIGHTS,
         ])
         lunar_utc = request.lunarUtc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -137,18 +139,18 @@ class Analyses:
                 raise HTTPException(503, detail={"code": "busy", "message": "The terrain queue is full. Try again shortly."})
             self.jobs[analysis_id] = {"id": analysis_id, "status": "queued"}
             self.pool.submit(self.run, analysis_id, result_path, cache_key, cells, requested, snapped, request.preset,
-                             science_key, lunar_utc, earth_start, regions)
+                             science_key, lunar_utc, earth_start, regions, request.lunarRegion)
             return self.jobs[analysis_id]
 
     def run(self, analysis_id, result_path, cache_key, cells, requested, snapped, preset,
-            science_key, lunar_utc, earth_start, regions):
+            science_key, lunar_utc, earth_start, regions, lunar_region):
         with self.lock:
             self.jobs[analysis_id] = {"id": analysis_id, "status": "running"}
         try:
             if regions:
                 worker = subprocess.run([sys.executable, "-m", "src.worker", "custom"], cwd=ROOT, text=True,
                                         input=json.dumps({"cells": cells, "regions": regions, "lunarUtc": lunar_utc,
-                                                          "earthStart": earth_start}),
+                                                          "earthStart": earth_start, "lunarRegion": lunar_region}),
                                         capture_output=True, timeout=210, check=True)
                 output = json.loads(worker.stdout)
                 if "error" in output:
@@ -167,7 +169,8 @@ class Analyses:
             data = read_result(terrain_path)
             if data is None:
                 result = subprocess.run([sys.executable, "-m", "src.worker"], cwd=ROOT, text=True,
-                                        input=json.dumps(cells), capture_output=True, timeout=SEARCH_DEADLINE)
+                                        input=json.dumps({"cells": cells, "lunarRegion": lunar_region}),
+                                        capture_output=True, timeout=SEARCH_DEADLINE)
                 if result.returncode:
                     raise RuntimeError(result.stderr)
                 output = json.loads(result.stdout)
@@ -193,7 +196,7 @@ class Analyses:
             write_result(result_path, publish(data, requested, snapped, preset, analysis_id, science))
         except subprocess.TimeoutExpired:
             self.fail(analysis_id, "timeout", "On-demand Earth terrain analysis timed out. Try again or choose another area."
-                      if regions else "Terrain analysis exceeded 30 seconds. Try a different route or use a replay case.")
+                      if regions else "Terrain analysis reached its time limit. Try a different route or use a replay case.")
         except AnalysisError as error:
             self.fail(analysis_id, error.code, str(error))
         except Exception:
@@ -298,6 +301,7 @@ def config():
     except FileNotFoundError as error:
         raise HTTPException(503, detail="Terrain assets are missing. Run python -m src.prepare.") from error
     return {
+        "lunarRegions": available_lunar_regions(),
         "coverage": MOON_BOUNDS, "coordinateOrder": ["longitude", "latitude"], "frame": MOON_FRAME,
         "moonRadiusM": MOON_RADIUS, "maxRouteKm": MAX_LENGTH / 1000, "snapRadiusM": SNAP_RADIUS,
         "resolutionM": RESOLUTION, "maxGradeDeg": MAX_GRADE, "roughnessWindowM": ROUGHNESS_WINDOW,

@@ -45,7 +45,7 @@ export function EvidenceQuality({ result, site }: { result: Analysis; site: Cand
     <h3 id="evidence-quality-title" tabIndex={-1}>Evidence quality</h3>
     <p className="chart-caption">Coverage shows how much usable data supports each comparison.</p>
     <table className="terrain-stats-table research-evidence-table" aria-labelledby="evidence-quality-title">
-      <thead><tr><th scope="col">Evidence</th><th scope="col">Moon <small>Hadley</small></th><th scope="col">Earth <small>{site?.name}</small></th></tr></thead>
+      <thead><tr><th scope="col">Evidence</th><th scope="col">Moon <small>{result.lunarRegion?.shortName ?? 'Hadley'}</small></th><th scope="col">Earth <small>{site?.name}</small></th></tr></thead>
       <tbody>
         <tr><th scope="row">Terrain coverage<span className="terrain-stat-meaning">Corridor cells with usable slope and roughness data.</span></th>
           <td><Coverage value={lunarTerrain} /></td><td><Coverage value={earthTerrain} /></td></tr>

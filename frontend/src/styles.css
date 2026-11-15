@@ -178,6 +178,7 @@ button:disabled { cursor: default; opacity: .47; }
 .panel-heading h2, .map-header :is(h2, h3) { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 1.2rem; font-weight: 600; letter-spacing: -.035em; }
 .planner-icon { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border-radius: 8px; background: var(--surface); color: var(--accent); }
 .planner .panel-heading h2 { font-size: clamp(1.45rem, 2vw, 1.85rem); }
+.lunar-region-picker { margin-top: 12px; }
 .planner-instructions { margin: 9px 0 0; color: var(--muted); font-size: 1rem; line-height: 1.45; }
 .planner-endpoints { display: grid; gap: 10px; }
 .coordinate-form { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--surface); transition: background .18s ease, border-color .18s ease; }

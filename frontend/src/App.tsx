@@ -6,9 +6,9 @@ import LunarMap from './LunarMap';
 import AnalysisLoading from './AnalysisLoading';
 import { MissionHeader } from './MissionSummary';
 import RouteAnalysis from './RouteAnalysis';
-import { previewRoute, HADLEY_EXAMPLE, type Endpoint, type Endpoints, type Point } from './lunar';
+import { previewRoute, HADLEY_REGION, type LunarRegion, type Endpoint, type Endpoints, type Point } from './lunar';
 
-import { analyze, applyPreset, defaultEarthStart, defaultLunarUtc, getEarthSites, presets, replay, terrainRoute, type Analysis, type Preset, type Replay, type RouteOverlay } from './analysisApi';
+import { analyze, applyPreset, defaultEarthStart, defaultLunarUtc, getEarthSites, getLunarRegions, presets, replay, terrainRoute, type Analysis, type Preset, type Replay, type RouteOverlay } from './analysisApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -94,6 +94,8 @@ export default function App() {
   const [entered, setEntered] = useState(false);
   const [points, setPoints] = useState<Endpoints>({ A: null, B: null });
   const [active, setActive] = useState<Endpoint | null>('A');
+  const [lunarRegion, setLunarRegion] = useState(HADLEY_REGION);
+  const [lunarRegions, setLunarRegions] = useState<LunarRegion[]>([HADLEY_REGION]);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [result, setResult] = useState<Analysis | null>(null);
   const [status, setStatus] = useState('');
@@ -120,6 +122,19 @@ export default function App() {
   const route = useMemo(() => result ? terrainRoute(result) : preview, [preview, result]);
 
   useEffect(() => () => request.current?.abort(), []);
+
+  useEffect(() => {
+    if (!entered) return;
+    const controller = new AbortController();
+    getLunarRegions(controller.signal).then(regions => {
+      if (controller.signal.aborted || !regions.length) return;
+      setLunarRegions(regions);
+      setLunarRegion(previous => regions.find(region => region.id === previous.id) ?? previous);
+    }).catch(() => {
+      // The bundled Hadley replays remain available offline.
+    });
+    return () => controller.abort();
+  }, [entered]);
 
   useEffect(() => {
     if (entered) workspaceHeading.current?.focus({ preventScroll: true });
@@ -188,11 +203,12 @@ export default function App() {
       const earthSites = demo ? [] : (await getEarthSites(controller.signal)).map(site => site.id);
       const calculated = demo
         ? await replay(demo, controller.signal)
-        : await analyze(points.A!, points.B!, preset, new Date(lunarUtc + 'Z').toISOString(), earthStart, controller.signal, { earthSites });
+        : await analyze(points.A!, points.B!, preset, new Date(lunarUtc + 'Z').toISOString(), earthStart, controller.signal, { earthSites, lunarRegion: lunarRegion.id });
       if (controller.signal.aborted) return;
       if (demo) {
         setOverlayMode(null);
         setReplayCase(demo);
+        setLunarRegion(calculated.lunarRegion ?? HADLEY_REGION);
         setOverlay([]);
         setHighlight(null);
         setPoints({ A: calculated.endpoints.A.requested, B: calculated.endpoints.B.requested });
@@ -233,7 +249,7 @@ export default function App() {
 
   function loadExample() {
     clearAnalysis();
-    setPoints(HADLEY_EXAMPLE);
+    setPoints(lunarRegion.example);
     setFormRevision(previous => ({ A: previous.A + 1, B: previous.B + 1 }));
     setActive(null);
     setHighlight(null);
@@ -271,13 +287,13 @@ export default function App() {
           <section ref={workspace} className="workspace" aria-labelledby="workspace-title">
             <header className="workspace-heading">
               <div className="workspace-heading-copy">
-                <div className="workspace-location"><MapPin size={15} /> Moon <span>/</span> Apollo 15 landing region</div>
-                <h1 id="workspace-title" ref={workspaceHeading} tabIndex={-1}>Hadley–Apennine<span aria-hidden="true">.</span></h1>
+                <div className="workspace-location"><MapPin size={15} /> Moon <span>/</span> Lunar terrain</div>
+                <h1 id="workspace-title" ref={workspaceHeading} tabIndex={-1}>{lunarRegion.name}<span aria-hidden="true">.</span></h1>
               </div>
               <p className="workspace-description">Explore the lunar surface and plan a traverse between two points.</p>
             </header>
             <div className="workspace-grid">
-              <LunarMap points={points} active={active} route={route} highlight={highlight} replay={replayCase !== null} overlay={overlay} snapped={result?.endpoints} resetSignal={resetSignal}
+              <LunarMap key={lunarRegion.id} region={lunarRegion} points={points} active={active} route={route} highlight={highlight} replay={replayCase !== null} overlay={overlay} snapped={result?.endpoints} resetSignal={resetSignal}
                 overlayControls={analysisOpen && !loading && !rankingEarthSites && result ? mapOverlayControls(
                   Boolean(result.lighting?.states?.length), Boolean(result.minerals?.lithology?.segments.length)) : undefined}
                 onPick={point => { if (active) selectPoint(active, point); }} onMove={setPoint} />
@@ -289,7 +305,18 @@ export default function App() {
                       <button className="icon-button" type="button" aria-label="Clear route" title="Clear route"
                         disabled={!points.A && !points.B} onClick={clearPoints}><RotateCcw size={17} /></button>
                     </header>
-                    <p className="planner-instructions">Pick two points in the mapped Hadley area. Calculated traverses can be up to 50 km.</p>
+                    <p className="planner-instructions">Pick two points inside the selected region. Routes can be up to {lunarRegion.maxRouteKm} km.</p>
+                    <label className="sample-select lunar-region-picker">Lunar region
+                      <select value={lunarRegion.id} disabled={loading || rankingEarthSites} onChange={event => {
+                        const selected = lunarRegions.find(region => region.id === event.target.value);
+                        if (selected) {
+                          clearPoints();
+                          setLunarRegion(selected);
+                        }
+                      }}>
+                        {lunarRegions.map(region => <option key={region.id} value={region.id}>{region.name}</option>)}
+                      </select>
+                    </label>
                   </div>
                   <div className="planner-endpoints">
                     {endpoints.map(endpoint => (
@@ -330,7 +357,7 @@ export default function App() {
                       {loading ? 'Analyzing…' : 'Analyze route'} <ArrowDownRight size={18} />
                     </button>
                     <button type="button" className="example-button" onClick={loadExample}>
-                      <Route size={15} /> Load Hadley example <ArrowRight size={15} />
+                      <Route size={15} /> Load {lunarRegion.shortName} example <ArrowRight size={15} />
                     </button>
                     <div className="replay-controls" aria-label="Offline replay">
                       <button className="pick-button" type="button" onClick={() => void runAnalysis('hadley')}>Replay Hadley</button>
