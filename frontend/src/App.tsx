@@ -90,8 +90,12 @@ function CoordinateForm({ endpoint, point, active, onSelect, onSave }: Coordinat
         </button>
       </div>
       {point && <div className="lunar-point-location" aria-live="polite">
-        {location?.feature ? <a href={location.feature.sourceUrl} target="_blank" rel="noreferrer">
-          {location.feature.distanceKm < 0.2 ? location.feature.name : `Near ${location.feature.name}`}
+        {location?.feature ? <a className="lunar-feature-link" href={location.feature.sourceUrl} target="_blank" rel="noreferrer">
+          <MapPin size={17} aria-hidden="true" />
+          <span className="lunar-feature-text">
+            <span className="lunar-feature-label">{location.feature.distanceKm < 0.2 ? 'Lunar feature' : 'Near'}</span>
+            <strong>{location.feature.name}</strong>
+          </span>
         </a> : <span>{location ? 'No nearby named feature' : 'Lunar coordinates selected'}</span>}
         {location && !location.terrainSupported && <small>On-demand terrain coverage ends at 60° latitude.</small>}
       </div>}
