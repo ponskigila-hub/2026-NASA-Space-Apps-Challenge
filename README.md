@@ -11,6 +11,8 @@ Pick two points in Hadley–Apennine or Mare Serenitatis, calculate a lunar trav
 
 The 90 m lunar terrain grids cover selected areas of Hadley–Apennine and Mare Serenitatis. The Earth ranking compares routes found by a bounded search. Rover-scale hazards, traction, wheel slip, thermal conditions, and field safety require separate evaluation.
 
+The coverage map outlines the regions with routing grids. The background uses [NASA Moon Trek LROC WAC imagery](https://trek.nasa.gov/moon/), with a bundled level 0 mosaic for offline browsing.
+
 ## Run locally
 
 Install Python 3.12 and Node.js 22 or later with npm. These shell commands are for macOS and Linux. On Windows, activate the virtual environment with `.venv\Scripts\Activate.ps1` in PowerShell.
@@ -40,7 +42,7 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open [the local app](http://127.0.0.1:5173), choose **Explore the Moon**, choose a **Lunar region**, load its example or select two points, then choose **Analyze route**. **Replay Hadley** and **Replay the rille** also work with just the frontend running.
+Open [the local app](http://127.0.0.1:5173), choose **Explore the Moon**, and pick a region from **Coverage map** or the **Lunar region** selector. Load its example or select two points, then choose **Analyze route**. **Replay Hadley** and **Replay the rille** also work with just the frontend running.
 
 The clone includes prepared terrain, lunar reflectance, lighting inputs, geology, and replay reports. The earlier challenge prototype is preserved in the root `api/`, `src/`, and `outputs/` directories. Use `backend/` for the current API.
 

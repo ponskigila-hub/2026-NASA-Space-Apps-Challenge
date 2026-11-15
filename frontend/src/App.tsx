@@ -265,6 +265,12 @@ export default function App() {
     setHighlight(null);
   }
 
+  function selectRegion(selected: LunarRegion) {
+    if (selected.id === lunarRegion.id || loading || rankingEarthSites) return;
+    clearPoints();
+    setLunarRegion(selected);
+  }
+
   return (
     <div className={`app ${entered ? 'app-explorer' : 'app-intro'}`}>
       <header className="topbar">
@@ -293,9 +299,14 @@ export default function App() {
               <p className="workspace-description">Explore the lunar surface and plan a traverse between two points.</p>
             </header>
             <div className="workspace-grid">
-              <LunarMap key={lunarRegion.id} region={lunarRegion} points={points} active={active} route={route} highlight={highlight} replay={replayCase !== null} overlay={overlay} snapped={result?.endpoints} resetSignal={resetSignal}
+              <LunarMap key={lunarRegion.id} region={lunarRegion} regions={lunarRegions} regionSelectionDisabled={loading || rankingEarthSites}
+                points={points} active={active} route={route} highlight={highlight} replay={replayCase !== null} overlay={overlay} snapped={result?.endpoints} resetSignal={resetSignal}
                 overlayControls={analysisOpen && !loading && !rankingEarthSites && result ? mapOverlayControls(
                   Boolean(result.lighting?.states?.length), Boolean(result.minerals?.lithology?.segments.length)) : undefined}
+                onSelectRegion={selected => {
+                  selectRegion(selected);
+                  workspaceHeading.current?.focus({ preventScroll: true });
+                }}
                 onPick={point => { if (active) selectPoint(active, point); }} onMove={setPoint} />
               <aside className="planner" aria-label="Route planner">
                 <div className="planner-body">
@@ -309,10 +320,7 @@ export default function App() {
                     <label className="sample-select lunar-region-picker">Lunar region
                       <select value={lunarRegion.id} disabled={loading || rankingEarthSites} onChange={event => {
                         const selected = lunarRegions.find(region => region.id === event.target.value);
-                        if (selected) {
-                          clearPoints();
-                          setLunarRegion(selected);
-                        }
+                        if (selected) selectRegion(selected);
                       }}>
                         {lunarRegions.map(region => <option key={region.id} value={region.id}>{region.name}</option>)}
                       </select>

@@ -231,6 +231,13 @@ button:disabled { cursor: default; opacity: .47; }
 
 .map-shell { display: grid; grid-template-rows: auto minmax(430px, 1fr) auto; min-width: 0; overflow: hidden; }
 .map-header, .map-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 15px; }
+.lunar-map-header { justify-content: flex-start; flex-wrap: wrap; }
+.lunar-map-header .map-source { margin-inline-start: auto; }
+.pick-button.lunar-coverage-toggle[aria-pressed='true'] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.lunar-coverage-label::before { content: ''; position: absolute; top: 16px; left: 64px; width: 12px; height: 12px; border: 2px solid var(--accent-ink); border-radius: 50%; background: var(--accent); }
+.lunar-coverage-label span { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 100%; padding: 7px 9px; border: 1px solid var(--selected-line); border-radius: 6px; color: var(--accent); background: #171a13ed; font: 600 .84rem/1.2 Geist, sans-serif; text-align: center; }
+.lunar-coverage-label.label-above span { top: auto; bottom: 30px; }
+.lunar-coverage-label.leaflet-interactive:hover span, .lunar-coverage-label:focus-visible span { color: var(--accent-ink); background: var(--accent); }
 .map-header :is(h2, h3) svg, .map-position svg { color: var(--accent); flex: none; }
 .map-stage { position: relative; isolation: isolate; overflow: hidden; background: #262623; }
 .map-canvas { position: absolute; inset: 0; background: #262623; }
