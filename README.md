@@ -1,6 +1,6 @@
 # AstroScan terrain analysis
 
-Pick two points in Hadley–Apennine, calculate a lunar traverse up to 50 km, and compare it with candidate routes on Earth. The ranking weights slope, roughness, and comparable lighting or mineral evidence according to the selected mission objective.
+Pick two points in Hadley–Apennine or Mare Serenitatis, calculate a lunar traverse up to 75 km, and compare it with candidate routes on Earth. The ranking weights slope, roughness, and comparable lighting or mineral evidence according to the selected mission objective.
 
 ## Explore the results
 
@@ -9,7 +9,11 @@ Pick two points in Hadley–Apennine, calculate a lunar traverse up to 50 km, an
 - **Lighting** compares modeled route shadows on the Moon and Earth. Select an observation window to preview its available times and export it as a CSV with local and UTC timestamps. Use **Shadows** on either main map to turn the overlay on or off.
 - **Minerals** compares spectral bands and mapped rock units where data is available. Use **Rock units** on the main maps to see the mapped geology along each route.
 
-The current lunar terrain grid covers Hadley–Apennine at 90 m resolution. The Earth ranking compares routes found by a bounded search. Rover-scale hazards, traction, wheel slip, thermal conditions, and field safety require separate evaluation.
+The 90 m lunar terrain grids cover selected areas of Hadley–Apennine and Mare Serenitatis. The Earth ranking compares routes found by a bounded search. Rover-scale hazards, traction, wheel slip, thermal conditions, and field safety require separate evaluation.
+
+The coverage map outlines the regions with routing grids. The background uses [NASA Moon Trek LROC WAC imagery](https://trek.nasa.gov/moon/), with a bundled level 0 mosaic for offline browsing.
+
+Choose **Whole Moon** to pick endpoints beyond the prepared regions. Each chosen coordinate is matched to the nearest named feature center within 50 km using a bundled [USGS/IAU Gazetteer](https://planetarynames.wr.usgs.gov/Page/MOON/target) snapshot. **Analyze route** loads and caches the NASA SLDEM2015 tiles intersecting the route area between 60°S and 60°N. The route limit is 75 km. The first analysis in a new area can take longer while its tiles download.
 
 ## Run locally
 
@@ -40,17 +44,23 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open [the local app](http://127.0.0.1:5173), choose **Explore the Moon**, load the Hadley example or select two points, then choose **Analyze route**. **Replay Hadley** and **Replay the rille** also work with just the frontend running.
+Open [the local app](http://127.0.0.1:5173), choose **Explore the Moon**, and pick a region from **Coverage map** or the **Lunar region** selector. Load its example or select two points, then choose **Analyze route**. **Replay Hadley** and **Replay the rille** also work with just the frontend running.
 
 The clone includes prepared terrain, lunar reflectance, lighting inputs, geology, and replay reports. The earlier challenge prototype is preserved in the root `api/`, `src/`, and `outputs/` directories. Use `backend/` for the current API.
 
 If you change the API address, set `VITE_ASTROSCAN_API_URL` before starting Vite. For a custom frontend origin, set `ASTROSCAN_ORIGINS` to the allowed frontend URLs, separated by commas, before starting the API.
 
+## Try a longer lunar route
+
+Select **Mare Serenitatis**, choose **Load Mare Serenitatis example**, and run the analysis. This experimental branch uses a second prepared grid from the same NASA SLDEM2015 elevation tile and keeps both gridded regions in the repository so selecting a region needs no elevation download. The Mare Serenitatis example is designed to exercise the new 75 km cap and the Earth analog search.
+
+Lunar geology and reflectance assets cover Hadley–Apennine. Mare Serenitatis supports terrain and modeled lighting comparisons.
+
 ## Search more Earth analogs
 
 A live analysis requests the seven NASA catalog sites alongside the built-in regions of Pinacate, Harrat Khaybar, and Payún Matrú. The saved replays start with the three built-in regions. In **Earth matches**, choose **Fetch and rank NASA sites** or use the fetch control on an individual site. To include a different area, enter its center latitude and longitude in the **Custom Earth region** form and select **Rank custom region**.
 
-The backend streams the public Copernicus elevation needed for each 84 × 84 km search area, builds the terrain and relief maps in memory, and ranks computed routes using the selected mission objective. If a region cannot be evaluated, its card shows why. Results for the expanded comparison expire when the API restarts or the results are evicted from memory.
+The backend streams the public Copernicus elevation needed for search areas up to 104 × 104 km, builds the terrain and relief maps in memory, and ranks computed routes using the selected mission objective. If a region cannot be evaluated, its card shows why. Results for the expanded comparison expire when the API restarts or the results are evicted from memory.
 
 Terrain relief works without a Copernicus account. To add a Sentinel-2 satellite layer, register a [Sentinel Hub OAuth client](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Overview/Authentication.html) and set `CDSE_CLIENT_ID` and `CDSE_CLIENT_SECRET` in the backend environment before starting the API. Select an Earth site with a computed route to fetch mineral data separately.
 
@@ -94,6 +104,7 @@ To refresh the bundled data, stop the API and run these commands from `backend/`
 
 ```sh
 python -m src.prepare
+python -m src.prepare_lunar_region
 python -m src.prepare_science
 python -m src.prepare_m3
 python -m src.build_replays
@@ -103,9 +114,11 @@ python -m src.build_replays
 
 
 - `GET /health` returns readiness and the data version.
-- `GET /config` returns Hadley coverage, coordinate conventions, limits, presets, assets, and provenance.
+- `GET /config` returns lunar regions and bounds, example coordinates, route limits, presets, assets, and provenance.
 - `GET /earth-sites` returns the catalog of Earth analogs and source links.
 - `POST /analyses` accepts `a` and `b` objects with `lat` and `lon` in decimal degrees, plus optional `preset`, `lunarUtc` (ISO timestamp with timezone), and `earthStart` (UTC date).
+- Pass `lunarRegion` as `auto` to select elevation from the two coordinates, or use `hadley` or `serenitatis` to select a prepared area. Omitted values default to Hadley.
+- `GET /lunar-location?lat=-43.31&lon=-11.36` returns the closest named feature within 50 km and indicates on-demand terrain coverage. Refresh the catalog from `backend/` with `python -m src.lunar_names`.
 - Pass `earthSites` as a list of catalog IDs and `earthCenter` as a latitude and longitude object to include additional Earth regions.
 - `GET /analyses/{id}` returns queued, running, complete, or failed status and the result or error.
 - `GET /analyses/{id}/report?site=pinacate` exports the stored result as a ZIP with a Markdown report, source manifest, profiles, Earth GeoJSON, and separately framed lunar geometry. Omit `site` for the top matched candidate. Pass `preset` to apply a different report objective to the same terrain analysis.

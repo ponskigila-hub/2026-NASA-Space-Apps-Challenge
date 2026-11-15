@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 
 from api.main import app
 from src.config import FRONTEND, MAX_LENGTH, REGIONS
+from src.lunar_regions import LUNAR_REGIONS
+from src.lunar_terrain import tiles_for_bounds
 from src.pipeline import AnalysisError, compute, snap_endpoints
 from src.routing import route_ab, snap_to_valid
 from src.scoring import score_terrain
@@ -20,6 +22,13 @@ from src.terrain import load_grid
 
 
 class TerrainTests(unittest.TestCase):
+    def test_sldem_tile_selection_crosses_zero_and_the_date_line(self):
+        equator = list(tiles_for_bounds(-1, -1, 1, 1))
+        self.assertEqual(len(equator), 4)
+        self.assertEqual({shift for _, shift, _ in equator}, {-360, 0})
+        date_line = list(tiles_for_bounds(179, 10, 181, 11))
+        self.assertEqual([key.rsplit('_', 2)[1:] for key, _, _ in date_line], [['135', '180'], ['180', '225']])
+
     def test_routing_blocks_corner_cutting_and_steep_steps(self):
         dem = np.zeros((2, 2), dtype=np.float32)
         valid = np.array([[True, False], [False, True]])
@@ -33,14 +42,30 @@ class TerrainTests(unittest.TestCase):
         cells, _ = snap_endpoints(points)
         grid = load_grid("moon")
         short = route_ab(grid.dem, grid.rough, grid.valid, *cells)
-        detour = (short + short[-2::-1]) * 4 + short
+        detour = (short + short[-2::-1]) * 6 + short
         with patch("src.pipeline.route_ab", side_effect=[detour, short]) as routing:
             result = compute(cells)
             self.assertEqual(routing.call_count, 2)
             self.assertLess(result["lunar"]["lengthKm"], 10)
         with patch("src.pipeline.route_ab", return_value=detour):
-            with self.assertRaisesRegex(AnalysisError, "exceeds 50 km"):
+            with self.assertRaisesRegex(AnalysisError, "exceeds 75 km"):
                 compute(cells)
+
+    def test_serenitatis_route_longer_than_50_km_finds_earth_matches(self):
+        points = LUNAR_REGIONS["serenitatis"]["example"]
+        cells, _ = snap_endpoints(points, "serenitatis")
+        result = compute(cells, region_id="serenitatis")
+        self.assertEqual(result["lunarRegion"]["id"], "serenitatis")
+        self.assertGreater(result["lunar"]["lengthKm"], 50)
+        self.assertLessEqual(result["lunar"]["lengthKm"], 75)
+        self.assertTrue(any(candidate["status"] == "matched" for candidate in result["candidates"]))
+        with self.assertRaisesRegex(AnalysisError, "outside the Hadley"):
+            snap_endpoints(points)
+
+    def test_serenitatis_rejects_endpoints_over_75_km_apart(self):
+        points = {"A": {"lat": 24.8, "lon": 16.2}, "B": {"lat": 24.8, "lon": 19.9}}
+        with self.assertRaisesRegex(AnalysisError, "more than 75 km apart"):
+            snap_endpoints(points, "serenitatis")
 
     def test_snap_honors_true_radius(self):
         valid = np.zeros((5, 5), dtype=bool)
@@ -81,11 +106,25 @@ class TerrainTests(unittest.TestCase):
 
 
 class APITests(unittest.TestCase):
+    def test_global_name_lookup_is_independent_of_terrain(self):
+        with TestClient(app) as client:
+            tycho = client.get('/lunar-location', params={'lat': -43.311, 'lon': -11.36}).json()
+            self.assertEqual(tycho['feature']['name'], 'Tycho')
+            self.assertTrue(tycho['terrainSupported'])
+            polar = client.get('/lunar-location', params={'lat': 89, 'lon': 90}).json()
+            self.assertIsNotNone(polar['feature'])
+            self.assertFalse(polar['terrainSupported'])
+            rejected = client.post('/analyses', json={'lunarRegion': 'auto',
+                'a': {'lat': 89, 'lon': 90}, 'b': {'lat': 89.01, 'lon': 90}})
+            self.assertEqual(rejected.json()['detail']['code'], 'outside_coverage')
+
     def test_live_analysis_and_export(self):
         points = {"a": {"lat": 26.19, "lon": 3.47}, "b": {"lat": 26.12, "lon": 3.70}}
         with TemporaryDirectory() as cache, patch("api.main.CACHE", Path(cache)), TestClient(app) as client:
             self.assertEqual(client.get("/health").status_code, 200)
-            self.assertEqual(client.get("/config").json()["maxRouteKm"], 50)
+            config = client.get("/config").json()
+            self.assertEqual(config["maxRouteKm"], 75)
+            self.assertEqual({region["id"] for region in config["lunarRegions"]}, {"hadley", "serenitatis"})
             for endpoint, code in [({"lat": 0, "lon": 0}, "outside_coverage"),
                                    (points["a"], "identical_endpoints")]:
                 rejected = client.post("/analyses", json={**points, "b": endpoint})

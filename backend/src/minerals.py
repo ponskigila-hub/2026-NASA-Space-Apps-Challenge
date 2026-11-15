@@ -159,8 +159,12 @@ def analyze_minerals(data):
             return {"status": "unavailable", "reason": f"Cannot read the prepared reflectance for {site}.",
                     "detail": str(error)}, {}
 
-    moon, lunar_bands = read_spectra("moon", data["lunar"])
-    lunar = {"lithology": lithology("moon", data["lunar"]), "spectral": moon}
+    if data.get("lunarRegion", {}).get("id", "hadley") == "hadley":
+        moon, lunar_bands = read_spectra("moon", data["lunar"])
+        lunar = {"lithology": lithology("moon", data["lunar"]), "spectral": moon}
+    else:
+        lunar_bands = {}
+        lunar = {"spectral": {"status": "unavailable", "reason": "Lunar spectral and geology assets are available for Hadley–Apennine."}}
     candidates = {}
     for candidate in data["candidates"]:
         if candidate["status"] != "matched":

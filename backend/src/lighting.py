@@ -12,6 +12,7 @@ import spiceypy as spice
 from .analog_sites import NASA_ANALOGS
 from .config import MOON_RADIUS, RESOLUTION, SCIENCE
 from .prepare_science import KERNELS
+from .lunar_regions import DEFAULT_LUNAR_REGION, lunar_grid_name
 from .terrain import load_grid
 
 TIMEZONES = {"pinacate": "America/Hermosillo", "harrat-khaybar": "Asia/Riyadh",
@@ -140,14 +141,16 @@ def candidate_lighting(site, route, target, earth_start, grid=None):
             "reason": None if windows else "No daytime window met both the 2° Sun elevation and 10-point shadow tolerances."}
 
 
-def analyze_lighting(data, lunar_utc, earth_start, remote_grids=None):
+def analyze_lighting(data, lunar_utc, earth_start, remote_grids=None, lunar_grid=None):
     paths = [SCIENCE / "kernels" / name.split("/")[-1] for name in KERNELS]
     if not all(path.is_file() for path in paths):
         return {"status": "unavailable", "reason": "The NASA SPICE kernels have not been prepared."}, {}
     for path in paths:
         spice.furnsh(str(path))
     try:
-        location, _, indices, horizons, known, weights = route_horizons("moon", data["lunar"])
+        region_id = data.get("lunarRegion", {}).get("id", DEFAULT_LUNAR_REGION)
+        location, _, indices, horizons, known, weights = route_horizons(
+            "moon", data["lunar"], load_grid(lunar_grid_name(region_id)) if lunar_grid is None else lunar_grid)
         elevation, azimuth = lunar_sun(location, lunar_utc)
     finally:
         for path in reversed(paths):

@@ -1,9 +1,11 @@
 """Process entrypoint for a deadline-bound terrain analysis."""
 from concurrent.futures import ThreadPoolExecutor
+from hashlib import sha256
 import json
 import sys
 
-from .pipeline import AnalysisError, compute
+from .lunar_regions import DEFAULT_LUNAR_REGION
+from .pipeline import AnalysisError, compute, snap_endpoints
 
 
 def compute_remote(request):
@@ -33,10 +35,23 @@ def compute_remote(request):
             return (site_id, grid, region), relief, [*sources, source]
         return (site_id, None, region), None, sources
 
+    region_id = request.get("lunarRegion", DEFAULT_LUNAR_REGION)
+    lunar_grid = region = files = snapped = None
+    cells = request["cells"]
+    if region_id == "auto":
+        from .lunar_terrain import prepare_route_grid
+        lunar_grid, region, files = prepare_route_grid(request["requested"])
+        cells, snapped = snap_endpoints(request["requested"], region_id, lunar_grid)
+
     selections = request["regions"].items()
     with ThreadPoolExecutor(max_workers=3) as pool:
         prepared = list(pool.map(read_site, selections))
-    data = compute(request["cells"], [region for region, _, _ in prepared])
+    data = compute(cells, [entry for entry, _, _ in prepared], region_id, lunar_grid, region)
+    if files is not None:
+        data["lunarSource"] = {"id": "SLDEM2015-ON-DEMAND", "kind": "elevation", "version": "SLDEM2015 V2.0",
+                               "url": "https://pgda.gsfc.nasa.gov/products/54", "regions": ["auto"],
+                               "license": "NASA Planetary Data System public archive", "files": files}
+        data["lunarDataVersion"] = sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()[:16]
     data["customSources"] = [source for _, _, sources in prepared for source in sources]
     candidates = {candidate["id"]: candidate for candidate in data["candidates"]}
     grids = {}
@@ -44,8 +59,8 @@ def compute_remote(request):
         if grid is not None:
             grids[site_id] = grid
             candidates[site_id]["relief"] = relief
-    science = enrich(data, request["lunarUtc"], request["earthStart"], grids)
-    return {"data": data, "science": science}
+    science = enrich(data, request["lunarUtc"], request["earthStart"], grids, lunar_grid)
+    return {"data": data, "science": science, "snapped": snapped}
 
 
 def main():
@@ -56,6 +71,8 @@ def main():
             output = {"data": enrich(request["terrain"], request["lunarUtc"], request["earthStart"])}
         elif sys.argv[1:] == ["custom"]:
             output = compute_remote(request)
+        elif isinstance(request, dict):
+            output = {"data": compute(request["cells"], region_id=request["lunarRegion"])}
         else:
             output = {"data": compute(request)}
     except AnalysisError as error:

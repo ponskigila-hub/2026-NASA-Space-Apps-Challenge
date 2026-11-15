@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Candidate, TerrainRoute } from './analysisApi';
+import type { LunarRegion } from './lunar';
 import TerrainRouteInset from './TerrainRouteInset';
 import { routeSections, terrainDistribution, terrainMetrics, terrainStatistics, type TerrainMapOverlays, type TerrainMetric } from './terrainDistribution';
 const emptyOverlays = { moon: [], earth: [] };
@@ -14,14 +15,16 @@ function measurement(value: number | undefined, unit: string, precision = 1) {
   })}${unit}` : '—';
 }
 
-export default function TerrainComparison({ lunar, earth, site, thresholdInput, onThresholdChange, onOverlay }: {
+export default function TerrainComparison({ lunar, lunarRegion, earth, site, thresholdInput, onThresholdChange, onOverlay }: {
   lunar: TerrainRoute;
+  lunarRegion?: LunarRegion;
   earth: TerrainRoute;
   site: Candidate;
   thresholdInput: string;
   onThresholdChange: (input: string) => void;
   onOverlay: (overlay: TerrainMapOverlays | null) => void;
 }) {
+  const moonName = lunarRegion?.shortName ?? 'Hadley';
   const moonSections = useMemo(() => routeSections(lunar), [lunar]);
   const earthSections = useMemo(() => routeSections(earth), [earth]);
   const [metric, setMetric] = useState<TerrainMetric>('slopeDeg');
@@ -65,7 +68,7 @@ export default function TerrainComparison({ lunar, earth, site, thresholdInput, 
     ['Corridor data coverage', `Share of terrain within ${lunar.corridor.halfWidthM} m of the route with usable data.`, percent(lunar.corridor.coverage), percent(earth.corridor.coverage)],
   ];
   const summary = [
-    ['Lunar route length', measurement(lunar.lengthKm, ' km', 2), 'Distance along the path at Hadley.'],
+    ['Lunar route length', measurement(lunar.lengthKm, ' km', 2), `Distance along the path at ${moonName}.`],
     ['Earth route length', measurement(earth.lengthKm, ' km', 2), `Distance along the path at ${site.name}.`],
     ['Length similarity', percent(longerRoute > 0 ? Math.min(lunar.lengthKm, earth.lengthKm) / longerRoute : null), 'Equal route lengths score 100%.'],
   ];
@@ -83,7 +86,7 @@ export default function TerrainComparison({ lunar, earth, site, thresholdInput, 
     </dl>
     <h4 id="terrain-measurements-title">Route measurements</h4>
     <table className="terrain-stats-table" aria-labelledby="terrain-measurements-title">
-      <thead><tr><th scope="col">Measurement</th><th scope="col">Moon <small>Hadley</small></th><th scope="col">Earth <small>{site.name}</small></th></tr></thead>
+      <thead><tr><th scope="col">Measurement</th><th scope="col">Moon <small>{moonName}</small></th><th scope="col">Earth <small>{site.name}</small></th></tr></thead>
       <tbody>
         {rows.map(([name, meaning, moon, earth]) => <tr key={name}>
           <th scope="row">{name}<span className="terrain-stat-meaning">{meaning}</span></th>
@@ -145,7 +148,7 @@ export default function TerrainComparison({ lunar, earth, site, thresholdInput, 
         </div>
         <div className="terrain-insets">
           <div className="terrain-map-legend"><span>Full route</span><span>Matching stretches</span></div>
-          <TerrainRouteInset name="Moon · Hadley" route={lunar} overlays={overlay?.moon ?? emptyOverlays.moon} />
+          <TerrainRouteInset name={`Moon · ${moonName}`} lunarRegion={lunarRegion} route={lunar} overlays={overlay?.moon ?? emptyOverlays.moon} />
           <TerrainRouteInset name={`Earth · ${site.name}`} route={earth} overlays={overlay?.earth ?? emptyOverlays.earth} site={site} />
           {pinned !== null && <button type="button" className="pick-button terrain-clear-range" onClick={clearRange}>Clear selected range</button>}
         </div>

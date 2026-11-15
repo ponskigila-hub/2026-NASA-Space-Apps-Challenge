@@ -8,8 +8,11 @@ from .terrain import load_grid
 
 
 def shortlist(windows, target, lunar):
-    minimum_size = min(78_000, max(4_000, 1.08 * target))
+    minimum_size = max(4_000, 1.08 * target)
     sizes = np.unique(windows[:, 2])
+    # Bundled Earth DEMs use a 78 km window. Expanded online grids offer larger windows.
+    if sizes.size and round(sizes[-1] * RESOLUTION / 1000) == 78:
+        minimum_size = min(78_000, minimum_size)
     # Allow rounding of physical window sizes to a whole number of cells.
     size = next((value for value in sizes if value * RESOLUTION + RESOLUTION / 2 >= minimum_size), None)
     if size is None:

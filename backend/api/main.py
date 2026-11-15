@@ -23,12 +23,14 @@ from src.config import (ALGORITHM_VERSION, CACHE, CORRIDOR_WIDTH, MAX_GRADE, MAX
                         MOON_BOUNDS, MOON_FRAME, MOON_RADIUS, PRESETS, RESOLUTION, ROOT, ROUGHNESS_WINDOW,
                         SEARCH_DEADLINE, SNAP_RADIUS, TERRAIN_WEIGHTS)
 from src.earth_imagery import imagery_enabled, satellite_image
+from src.lunar_names import locate
+from src.lunar_regions import available_lunar_regions, terrain_version
 from src.pipeline import AnalysisError, publish, snap_endpoints
 from src.reports import export_bundle
 from src.science import SOURCES, apply_preset, rankings, science_version
 from src.fetch_emit import fetch, replay
 from src.config import DEFAULT_LUNAR_UTC, NOMINAL_WEIGHTS
-from src.terrain import source_manifest
+from src.terrain import lunar_distance, source_manifest
 
 LOG = logging.getLogger(__name__)
 MAX_PENDING = 4
@@ -51,6 +53,7 @@ class AnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     a: Point
     b: Point
+    lunarRegion: Literal["hadley", "serenitatis", "auto"] = "hadley"
     earthCenter: EarthCenter | None = None
     earthSite: str | None = None
     earthSites: list[str] = Field(default_factory=list, max_length=len(NASA_ANALOGS))
@@ -107,9 +110,27 @@ class Analyses:
 
     def submit(self, request):
         requested = {"A": request.a.model_dump(), "B": request.b.model_dump()}
-        cells, snapped = snap_endpoints(requested)
+        region_id = request.lunarRegion
+        if region_id == "auto":
+            for region in available_lunar_regions():
+                west, south, east, north = region["bounds"]
+                if all(west <= point["lon"] <= east and south <= point["lat"] <= north for point in requested.values()):
+                    region_id = region["id"]
+                    break
+        if region_id == "auto":
+            if any(abs(point["lat"]) >= 60 for point in requested.values()):
+                raise AnalysisError("outside_coverage", "On-demand routing currently covers 60°S to 60°N. Moon place names are available globally.")
+            direct = lunar_distance(requested["A"], requested["B"])
+            if direct > MAX_LENGTH:
+                raise AnalysisError("length_limit", f"Choose endpoints within {MAX_LENGTH / 1000:g} km of each other.")
+            if direct == 0:
+                raise AnalysisError("identical_endpoints", "Choose two different points.")
+            cells, snapped, version = None, None, "sldem2015-on-demand-v1"
+        else:
+            cells, snapped = snap_endpoints(requested, region_id)
+            version = terrain_version(region_id)
         cache_key = digest([
-            cells, ALGORITHM_VERSION, source_manifest()["dataVersion"], RESOLUTION, SNAP_RADIUS,
+            cells or requested, region_id, ALGORITHM_VERSION, version, RESOLUTION, SNAP_RADIUS,
             MAX_LENGTH, MAX_GRADE, CORRIDOR_WIDTH, MIN_COVERAGE, ROUGHNESS_WINDOW, TERRAIN_WEIGHTS,
         ])
         lunar_utc = request.lunarUtc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -129,7 +150,7 @@ class Analyses:
                 return cached
             if self.jobs.get(analysis_id, {}).get("status") in ("queued", "running"):
                 return self.jobs[analysis_id]
-            result = read_result(result_path) if not regions else None
+            result = read_result(result_path) if not regions and region_id != "auto" else None
             if result is not None:
                 return {"id": analysis_id, "status": "complete", "result": result}
             pending = sum(job["status"] in ("queued", "running") for job in self.jobs.values())
@@ -137,25 +158,26 @@ class Analyses:
                 raise HTTPException(503, detail={"code": "busy", "message": "The terrain queue is full. Try again shortly."})
             self.jobs[analysis_id] = {"id": analysis_id, "status": "queued"}
             self.pool.submit(self.run, analysis_id, result_path, cache_key, cells, requested, snapped, request.preset,
-                             science_key, lunar_utc, earth_start, regions)
+                             science_key, lunar_utc, earth_start, regions, region_id)
             return self.jobs[analysis_id]
 
     def run(self, analysis_id, result_path, cache_key, cells, requested, snapped, preset,
-            science_key, lunar_utc, earth_start, regions):
+            science_key, lunar_utc, earth_start, regions, lunar_region):
         with self.lock:
             self.jobs[analysis_id] = {"id": analysis_id, "status": "running"}
         try:
-            if regions:
+            if regions or lunar_region == "auto":
                 worker = subprocess.run([sys.executable, "-m", "src.worker", "custom"], cwd=ROOT, text=True,
                                         input=json.dumps({"cells": cells, "regions": regions, "lunarUtc": lunar_utc,
-                                                          "earthStart": earth_start}),
-                                        capture_output=True, timeout=210, check=True)
+                                                          "earthStart": earth_start, "lunarRegion": lunar_region,
+                                                          "requested": requested}),
+                                        capture_output=True, timeout=300 if lunar_region == "auto" else 210, check=True)
                 output = json.loads(worker.stdout)
                 if "error" in output:
                     raise AnalysisError(output["error"]["code"], output["error"]["message"])
                 science = output["science"]
                 science["lighting"] = {"utc": lunar_utc, "earthStart": earth_start, **(science.get("lighting") or {})}
-                result = publish(output["data"], requested, snapped, preset, analysis_id, science)
+                result = publish(output["data"], requested, output.get("snapped") or snapped, preset, analysis_id, science)
                 result["customImagery"] = imagery_enabled()
                 with self.lock:
                     self.custom_results[analysis_id] = {"id": analysis_id, "status": "complete", "result": result}
@@ -167,7 +189,8 @@ class Analyses:
             data = read_result(terrain_path)
             if data is None:
                 result = subprocess.run([sys.executable, "-m", "src.worker"], cwd=ROOT, text=True,
-                                        input=json.dumps(cells), capture_output=True, timeout=SEARCH_DEADLINE)
+                                        input=json.dumps({"cells": cells, "lunarRegion": lunar_region}),
+                                        capture_output=True, timeout=SEARCH_DEADLINE)
                 if result.returncode:
                     raise RuntimeError(result.stderr)
                 output = json.loads(result.stdout)
@@ -192,8 +215,8 @@ class Analyses:
             science["lighting"] = {"utc": lunar_utc, "earthStart": earth_start, **(science.get("lighting") or {})}
             write_result(result_path, publish(data, requested, snapped, preset, analysis_id, science))
         except subprocess.TimeoutExpired:
-            self.fail(analysis_id, "timeout", "On-demand Earth terrain analysis timed out. Try again or choose another area."
-                      if regions else "Terrain analysis exceeded 30 seconds. Try a different route or use a replay case.")
+            self.fail(analysis_id, "timeout", "On-demand terrain analysis timed out. Try again shortly."
+                      if regions else "Terrain analysis reached its time limit. Try a different route or use a replay case.")
         except AnalysisError as error:
             self.fail(analysis_id, error.code, str(error))
         except Exception:
@@ -286,6 +309,11 @@ def health():
     return {"status": "ok", "dataVersion": manifest["dataVersion"], "scienceVersion": science_version()}
 
 
+@app.get("/lunar-location")
+def lunar_location(lat: float = Query(ge=-90, le=90), lon: float = Query(ge=-180, le=180)):
+    return {"feature": locate(lat, lon), "terrainSupported": abs(lat) < 60}
+
+
 @app.get("/earth-sites")
 def earth_sites():
     return [{"id": site_id, **site} for site_id, site in NASA_ANALOGS.items()]
@@ -298,6 +326,7 @@ def config():
     except FileNotFoundError as error:
         raise HTTPException(503, detail="Terrain assets are missing. Run python -m src.prepare.") from error
     return {
+        "lunarRegions": available_lunar_regions(),
         "coverage": MOON_BOUNDS, "coordinateOrder": ["longitude", "latitude"], "frame": MOON_FRAME,
         "moonRadiusM": MOON_RADIUS, "maxRouteKm": MAX_LENGTH / 1000, "snapRadiusM": SNAP_RADIUS,
         "resolutionM": RESOLUTION, "maxGradeDeg": MAX_GRADE, "roughnessWindowM": ROUGHNESS_WINDOW,
