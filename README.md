@@ -1,6 +1,19 @@
-# AstroScan terrain analysis
+# AstroScan
 
-Pick two points in Hadley–Apennine or Mare Serenitatis, calculate a lunar traverse up to 75 km, and compare it with candidate routes on Earth. The ranking weights slope, roughness, and comparable lighting or mineral evidence according to the selected mission objective.
+AstroScan is an interactive map for finding Earth test routes that resemble a planned lunar traverse. Pick two points on the Moon, calculate a route up to 75 km, and compare candidate routes on Earth. The app shows why each candidate ranked where it did and how much of its route has usable data.
+
+## Problem and challenge
+
+Teams planning lunar field tests need Earth sites that resemble the specific terrain they expect to cross. A broad resemblance between two landscapes leaves practical questions about their slopes, roughness, shadows, and geology. AstroScan compares candidate routes at the same analysis scale and lets researchers choose what matters most for rover navigation, camera testing, or mineral mapping.
+
+AstroScan is the lunar traverse entry by **Tim Ga Bakal Menang** for the 2026 NASA Space Apps Challenge. [Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars](https://www.spaceappschallenge.org/2026/challenges/permanent-moon-base-locations-and-mars/)
+
+## How it works
+
+1. **Place two lunar endpoints.** Use **Whole Moon** to select coordinates or start with Hadley–Apennine or Mare Serenitatis. A bundled gazetteer lets the app label a point with the nearest named feature center within 50 km.
+2. **Calculate a lunar traverse.** The backend loads a prepared grid or fetches the required lunar elevation tiles. An A* search runs on a 90 m grid, favors gentler and smoother terrain, and limits the grade of each step to 20°.
+3. **Find and rank Earth routes.** The app samples candidate paths within bounded Earth regions and compares distributions of slope and roughness using Wasserstein distance. It combines the scores using weights for the selected mission objective and includes lighting or mineral evidence when the same measurements are available across the ranked sites.
+4. **Inspect and export the result.** Compare each candidate with the lunar route, check evidence coverage and ranking stability, and export the report ZIP with route data and sources.
 
 ## Explore the results
 
@@ -9,11 +22,25 @@ Pick two points in Hadley–Apennine or Mare Serenitatis, calculate a lunar trav
 - **Lighting** compares modeled route shadows on the Moon and Earth. Select an observation window to preview its available times and export it as a CSV with local and UTC timestamps. Use **Shadows** on either main map to turn the overlay on or off.
 - **Minerals** compares spectral bands and mapped rock units where data is available. Use **Rock units** on the main maps to see the mapped geology along each route.
 
-The 90 m lunar terrain grids cover selected areas of Hadley–Apennine and Mare Serenitatis. The Earth ranking compares routes found by a bounded search. Rover-scale hazards, traction, wheel slip, thermal conditions, and field safety require separate evaluation.
+## Datasets and models
 
-The coverage map outlines the regions with routing grids. The background uses [NASA Moon Trek LROC WAC imagery](https://trek.nasa.gov/moon/), with a bundled level 0 mosaic for offline browsing.
+| Source | How AstroScan uses it |
+| --- | --- |
+| [SLDEM2015 lunar elevation](https://pgda.gsfc.nasa.gov/products/54) | Combines NASA LRO laser altimetry with JAXA SELENE/Kaguya stereo terrain. AstroScan uses it for lunar routing, slope and roughness, and terrain horizons. |
+| [Copernicus DEM GLO-30 Public](https://copernicus-dem-30m.s3.amazonaws.com/readme.html) | Supplies the Earth elevations for candidate routes, terrain comparisons, and shadow modeling. AstroScan resamples both bodies to a 90 m analysis grid. |
+| [NASA Moon Trek LROC WAC imagery](https://trek.nasa.gov/moon/) and [USGS/IAU Gazetteer of Planetary Nomenclature](https://planetarynames.wr.usgs.gov/Page/MOON/target) | Provide the lunar basemap and nearby feature names. The repository includes a low-resolution mosaic for offline browsing. |
+| [NASA/JPL NAIF SPICE kernels](https://naif.jpl.nasa.gov/naif/data_lunar.html) and [pvlib](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.get_solarposition.html) | Compute lunar and Earth Sun positions. The lighting model compares them with terrain horizons and searches 30 days of Earth observations. |
+| [Chandrayaan-1 Moon Mineralogy Mapper (M³)](https://doi.org/10.17189/1520414) and [NASA EMIT L2A reflectance](https://cmr.earthdata.nasa.gov/search/concepts/C2408750690-LPCLOUD.html) | Supply lunar and Earth spectra. AstroScan compares the depths and centers of absorption bands where both routes have usable measurements. Live EMIT access uses NASA Earthdata. |
+| [USGS Unified Geologic Map of the Moon](https://pubs.usgs.gov/sim/3463/) and [Global Lithological Map (GLiM)](https://doi.org/10.1029/2012GC004370) | Supply mapped rock units for the prepared lunar and Earth layers. These give context for interpreting spectral evidence. |
+| [Copernicus Sentinel-2 imagery](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/S2L2A.html) | Provides an optional Earth satellite basemap through Sentinel Hub credentials. |
 
-Choose **Whole Moon** to pick endpoints beyond the prepared regions. Each chosen coordinate is matched to the nearest named feature center within 50 km using a bundled [USGS/IAU Gazetteer](https://planetarynames.wr.usgs.gov/Page/MOON/target) snapshot. **Analyze route** loads and caches the NASA SLDEM2015 tiles intersecting the route area between 60°S and 60°N. The route limit is 75 km. The first analysis in a new area can take longer while its tiles download.
+## Coverage and limitations
+
+- **Lunar coverage.** Prepared terrain grids cover selected areas of Hadley–Apennine and Mare Serenitatis. **Whole Moon** lets users browse the globe. On-demand routing uses SLDEM2015 tiles from 60°S to 60°N and a 75 km traverse limit. The first analysis in a new area can take longer while tiles download.
+- **Earth search.** Rankings describe the candidates found within the configured search areas and path-length tolerance. The results serve as a shortlist for field evaluation.
+- **Terrain resolution.** The 90 m grid describes broad terrain. Boulder-scale hazards, traction, wheel slip, thermal conditions, and field safety require separate evaluation.
+- **Science coverage.** Lighting results model terrain shadows for a given Sun position. Field conditions and camera performance require separate checks. Lunar geology and reflectance assets cover Hadley–Apennine, and Earth mineral comparisons depend on the availability and quality of EMIT observations.
+- **Interpreting evidence.** Coverage describes the share of the route with usable data. Ranking stability measures how often the same candidate leads when weights change.
 
 ## Run locally
 
@@ -44,7 +71,7 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open [the local app](http://127.0.0.1:5173), choose **Explore the Moon**, and pick a region from **Coverage map** or the **Lunar region** selector. Load its example or select two points, then choose **Analyze route**. **Replay Hadley** and **Replay the rille** also work with just the frontend running.
+Open [the local app](http://127.0.0.1:5173) and choose **Explore the Moon**. Load a prepared example or use **Whole Moon** to place two endpoints in the supported latitude range, then choose **Analyze route**. **Replay Hadley** and **Replay the rille** use bundled results and work with only the frontend running.
 
 The clone includes prepared terrain, lunar reflectance, lighting inputs, geology, and replay reports. The earlier challenge prototype is preserved in the root `api/`, `src/`, and `outputs/` directories. Use `backend/` for the current API.
 
@@ -52,9 +79,9 @@ If you change the API address, set `VITE_ASTROSCAN_API_URL` before starting Vite
 
 ## Try a longer lunar route
 
-Select **Mare Serenitatis**, choose **Load Mare Serenitatis example**, and run the analysis. This experimental branch uses a second prepared grid from the same NASA SLDEM2015 elevation tile and keeps both gridded regions in the repository so selecting a region needs no elevation download. The Mare Serenitatis example is designed to exercise the new 75 km cap and the Earth analog search.
+Select **Mare Serenitatis**, choose **Load Mare Serenitatis example**, and run the analysis. This example exercises the 75 km route cap and Earth analog search with a bundled lunar grid.
 
-Lunar geology and reflectance assets cover Hadley–Apennine. Mare Serenitatis supports terrain and modeled lighting comparisons.
+For a shorter demo, **Replay the rille** shows how the app compares lunar terrain with a candidate route in Harrat Khaybar, Saudi Arabia. The saved rover-navigation result gives that candidate an 81.4% match score.
 
 ## Search more Earth analogs
 
@@ -112,7 +139,6 @@ python -m src.build_replays
 
 ## API
 
-
 - `GET /health` returns readiness and the data version.
 - `GET /config` returns lunar regions and bounds, example coordinates, route limits, presets, assets, and provenance.
 - `GET /earth-sites` returns the catalog of Earth analogs and source links.
@@ -124,3 +150,11 @@ python -m src.build_replays
 - `GET /analyses/{id}/report?site=pinacate` exports the stored result as a ZIP with a Markdown report, source manifest, profiles, Earth GeoJSON, and separately framed lunar geometry. Omit `site` for the top matched candidate. Pass `preset` to apply a different report objective to the same terrain analysis.
 
 Lunar routes use ordered snapped endpoints and a 20° along-step grade ceiling. Earth matching uses bounded deterministic sampling and a ±20% path-length tolerance with a two-cell minimum. A missing Earth result means the search found no eligible match within its configured limits.
+
+## Team
+
+**Tim Ga Bakal Menang**
+
+- Rivaldo Caga Prawira Tjong
+- Nicholas Tjoe
+- Mitchell Revelin
