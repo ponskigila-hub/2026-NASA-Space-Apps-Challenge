@@ -178,20 +178,11 @@ button:disabled { cursor: default; opacity: .47; }
 .panel-heading h2, .map-header :is(h2, h3) { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 1.2rem; font-weight: 600; letter-spacing: -.035em; }
 .planner-icon { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border-radius: 8px; background: var(--surface); color: var(--accent); }
 .planner .panel-heading h2 { font-size: clamp(1.45rem, 2vw, 1.85rem); }
-.lunar-region-picker { margin-top: 12px; }
 .planner-instructions { margin: 9px 0 0; color: var(--muted); font-size: 1rem; line-height: 1.45; }
 .planner-endpoints { display: grid; gap: 10px; }
 .coordinate-form { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--surface); transition: background .18s ease, border-color .18s ease; }
 .coordinate-form[data-active='true'] { border-color: var(--selected-line); background: var(--selected-surface); }
 .point-heading { margin-bottom: 7px; }
-.lunar-point-location { display: grid; gap: 6px; margin: 0 0 12px; color: var(--muted); font-size: .86rem; }
-.lunar-feature-link { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--accent); text-decoration: none; }
-.lunar-feature-link svg { flex: none; }
-.lunar-feature-text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
-.lunar-feature-label { color: var(--muted); font-size: .82rem; font-weight: 600; }
-.lunar-feature-text strong { font-size: 1.12rem; line-height: 1.2; }
-.lunar-feature-link:is(:hover, :focus-visible) { border-color: var(--selected-line); }
-.lunar-feature-link:is(:hover, :focus-visible) strong { text-decoration: underline; text-underline-offset: 3px; }
 .point-heading h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: .84rem; font-weight: 600; }
 .point-letter, .lunar-pin span { display: grid; place-items: center; width: 25px; height: 25px; flex: none; border-radius: 50%; color: var(--accent-ink); background: var(--accent); font: .75rem var(--mono); }
 .point-b, .lunar-pin-b span { color: #26291e; background: var(--ink); }
@@ -239,13 +230,6 @@ button:disabled { cursor: default; opacity: .47; }
 
 .map-shell { display: grid; grid-template-rows: auto minmax(430px, 1fr) auto; min-width: 0; overflow: hidden; }
 .map-header, .map-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 15px; }
-.lunar-map-header { justify-content: flex-start; flex-wrap: wrap; }
-.lunar-map-header .map-source { margin-inline-start: auto; }
-.pick-button.lunar-coverage-toggle[aria-pressed='true'] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
-.lunar-coverage-label::before { content: ''; position: absolute; top: 16px; left: 64px; width: 12px; height: 12px; border: 2px solid var(--accent-ink); border-radius: 50%; background: var(--accent); }
-.lunar-coverage-label span { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 100%; padding: 7px 9px; border: 1px solid var(--selected-line); border-radius: 6px; color: var(--accent); background: #171a13ed; font: 600 .84rem/1.2 Geist, sans-serif; text-align: center; }
-.lunar-coverage-label.label-above span { top: auto; bottom: 30px; }
-.lunar-coverage-label.leaflet-interactive:hover span, .lunar-coverage-label:focus-visible span { color: var(--accent-ink); background: var(--accent); }
 .map-header :is(h2, h3) svg, .map-position svg { color: var(--accent); flex: none; }
 .map-stage { position: relative; isolation: isolate; overflow: hidden; background: #262623; }
 .map-canvas { position: absolute; inset: 0; background: #262623; }

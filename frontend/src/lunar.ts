@@ -29,24 +29,10 @@ export interface RouteResult {
 
 const RADIUS_KM = 1737.4;
 const radians = Math.PI / 180;
-const HADLEY_EXAMPLE: Record<Endpoint, Point> = {
+export const HADLEY_CENTER: Point = { lat: 26.25, lon: 3.72 };
+export const HADLEY_EXAMPLE: Record<Endpoint, Point> = {
   A: { lat: 26.143017, lon: 3.079142 },
   B: { lat: 26.357301, lon: 4.389023 },
-};
-
-export interface LunarRegion {
-  id: string;
-  name: string;
-  shortName: string;
-  bounds: [number, number, number, number];
-  example: Record<Endpoint, Point>;
-  maxRouteKm: number;
-  relief?: string;
-}
-
-export const HADLEY_REGION: LunarRegion = {
-  id: 'hadley', name: 'Hadley–Apennine', shortName: 'Hadley',
-  bounds: [2.5, 25.4, 4.9, 27.0], example: HADLEY_EXAMPLE, maxRouteKm: 75,
 };
 
 export function lunarDistance(a: Point, b: Point) {

@@ -22,18 +22,17 @@ function ShadowLegend() {
     <li key={style.label}><i data-state={style.label} style={{ backgroundColor: style.color }} />{style.label}</li>)}</ul>;
 }
 
-function ShadowTimeline({ moon, earth, site, moonName, moonLength, limit, inspect }: {
+function ShadowTimeline({ moon, earth, site, moonLength, limit, inspect }: {
   moon: Segment[];
   earth: Segment[];
   site: Candidate | null;
-  moonName: string;
   moonLength: number;
   limit: number;
   inspect: (km: number | null) => void;
 }) {
   const [cursor, setCursor] = useState(0);
   const distance = Math.min(cursor, limit);
-  const tracks = [{ name: `${moonName} · Moon`, segments: moon, length: moonLength },
+  const tracks = [{ name: 'Hadley · Moon', segments: moon, length: moonLength },
     ...(site?.route ? [{ name: site.name, segments: earth, length: site.route.lengthKm }] : [])];
   return <div className="profile lighting-transect" data-lighting-panel>
     <h3>Shadow along the route</h3>
@@ -72,9 +71,8 @@ function DirectionShares({ shares }: { shares: ReturnType<typeof travelSunShares
   </div>)}</dl>;
 }
 
-function LightingMeasurements({ moon, earth, lunarRoute, site, moonName, moonSegments, earthSegments }: {
+function LightingMeasurements({ moon, earth, lunarRoute, site, moonSegments, earthSegments }: {
   moon: Analysis['lighting']; earth?: LightFrame; lunarRoute: TerrainRoute; site: Candidate | null;
-  moonName: string;
   moonSegments: ReturnType<typeof shadowSegments>; earthSegments: ReturnType<typeof shadowSegments>;
 }) {
   const gaps = lightingGaps(moon, earth);
@@ -100,7 +98,7 @@ function LightingMeasurements({ moon, earth, lunarRoute, site, moonName, moonSeg
     <h3 id="lighting-measurements-title">Lighting measurements</h3>
     <p>Compare the current snapshots. The gaps show how far apart the values are. Shadow gaps are in percentage points (pp).</p>
     <table className="terrain-stats-table lighting-measurements-table" aria-labelledby="lighting-measurements-title">
-      <thead><tr><th scope="col">Measurement</th><th scope="col">Moon <small>{moonName}</small></th><th scope="col">Earth <small>{site?.name}</small></th></tr></thead>
+      <thead><tr><th scope="col">Measurement</th><th scope="col">Moon <small>Hadley</small></th><th scope="col">Earth <small>{site?.name}</small></th></tr></thead>
       <tbody>{rows.map(([name, meaning, lunarValue, earthValue, gap]) => <tr key={name}>
         <th scope="row">{name}<span className="terrain-stat-meaning">{meaning}</span>
           {gap && <span className="lighting-stat-gap">Gap {gap}</span>}
@@ -209,7 +207,6 @@ export default function LightingSimulator({ result, site, active, onMoonOverlay,
 
   const [selection, setSelection] = useState<{ window: number; frame: number | null }>({ window: 0, frame: null });
   const [cursor, setCursor] = useState<number | null>(null);
-  const moonName = result.lunarRegion?.shortName ?? 'Hadley';
   const moon = result.lighting;
   const earth = site?.lighting;
   const selected = earth?.windows[selection.window];
@@ -238,9 +235,9 @@ export default function LightingSimulator({ result, site, active, onMoonOverlay,
       {moon?.reason && <p className="analysis-note">{moon.reason}</p>}
       <ShadowLegend />
       <div className="lighting-preview-grid">
-        <TerrainRouteInset name={`Moon · ${moonName}`} lunarRegion={result.lunarRegion} route={result.lunar} overlays={moonOverlay} pathColor={shadowStyle[-1].color}
+        <TerrainRouteInset name="Moon · Hadley" route={result.lunar} overlays={moonOverlay} pathColor={shadowStyle[-1].color}
           caption={<>{snapshotCaption(moon)}{moon?.utc && <time dateTime={moon.utc}>{utc(moon.utc)}</time>}</>}
-          description={snapshotDescription(`${moonName} lunar`, moon, moonSegments.length > 0)}
+          description={snapshotDescription('Hadley lunar', moon, moonSegments.length > 0)}
           marker={cursor !== null && cursor <= result.lunar.lengthKm ? pointAt(result.lunar, cursor) : null} />
         {site && earthRoute ? <TerrainRouteInset name={`Earth · ${site.name}`} route={earthRoute} site={site} overlays={earthOverlay}
           pathColor={shadowStyle[-1].color} caption={<>{snapshotCaption(frame)}{frame && <time dateTime={frame.utc}>{date(frame.local)} · {time(frame.local)} local</time>}</>}
@@ -252,9 +249,9 @@ export default function LightingSimulator({ result, site, active, onMoonOverlay,
     </section>
     <ObservationWindows site={site} moon={moon} earth={earth} selectedIndex={selection.window} frameIndex={frameIndex}
       selectWindow={index => setSelection({ window: index, frame: null })} />
-    <ShadowTimeline moonName={moonName} moon={moonSegments} earth={earthSegments} site={site} moonLength={result.lunar.lengthKm} limit={Math.max(result.lunar.lengthKm, earthRoute?.lengthKm ?? 0)}
+    <ShadowTimeline moon={moonSegments} earth={earthSegments} site={site} moonLength={result.lunar.lengthKm} limit={Math.max(result.lunar.lengthKm, earthRoute?.lengthKm ?? 0)}
       inspect={distance => { setCursor(distance); inspect(distance); }} />
-    <LightingMeasurements moonName={moonName} moon={moon} earth={frame} lunarRoute={result.lunar} site={site} moonSegments={moonSegments} earthSegments={earthSegments} />
+    <LightingMeasurements moon={moon} earth={frame} lunarRoute={result.lunar} site={site} moonSegments={moonSegments} earthSegments={earthSegments} />
     <div className="mission-callout lighting-limit"><strong>What this preview models</strong>
       <p>AstroScan models direct sunlight and terrain shadow along the route using a 90 m elevation grid. Atmosphere, clouds, surface reflectance, and camera settings also affect exposure, contrast, and visibility during field tests.</p>
     </div>

@@ -176,9 +176,8 @@ function nearest(profile: ProfileSample[], distance: number) {
     Math.abs(sample.distanceKm - distance) < Math.abs(best.distanceKm - distance) ? sample : best).point;
 }
 
-function ComparisonProfile({ lunar, earth, name, moonName, onHighlight, onEarthHighlight }: {
+function ComparisonProfile({ lunar, earth, name, onHighlight, onEarthHighlight }: {
   lunar: TerrainRoute;
-  moonName: string;
   earth: TerrainRoute;
   name: string;
   onHighlight: (point: Point | null) => void;
@@ -208,7 +207,7 @@ function ComparisonProfile({ lunar, earth, name, moonName, onHighlight, onEarthH
         </div>
       </div>
       <Takeaway>Compare the two routes at the same distance from their starting points to see where the Earth route demands a similar climb or crosses similar ground.</Takeaway>
-      <div className="earth-legend"><span>{moonName}</span><span>{name}</span></div>
+      <div className="earth-legend"><span>Hadley</span><span>{name}</span></div>
       <div className="chart-container" onMouseLeave={() => { onHighlight(null); onEarthHighlight(null); }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 8, right: 15, bottom: 0, left: 0 }} onMouseMove={state => {
@@ -229,7 +228,7 @@ function ComparisonProfile({ lunar, earth, name, moonName, onHighlight, onEarthH
               r={5} fill="var(--mission-cyan)" stroke="var(--panel)" />}
             {metric === 'elevationM' && gap && <ReferenceDot x={gap.km} y={gap.moon!} r={6}
               fill="var(--mission-lime)" stroke="var(--panel)" label={{ value: 'Largest elevation gap', position: 'insideTopRight', fill: 'var(--ink)', fontSize: 13 }} />}
-            <Line name={moonName} dataKey="moon" stroke="var(--muted)" strokeDasharray="5 4" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line name="Hadley" dataKey="moon" stroke="var(--muted)" strokeDasharray="5 4" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line name={name} dataKey="earth" stroke="var(--accent)" strokeWidth={2} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
@@ -298,7 +297,7 @@ function EarthSiteList({ result, onUpdate, onRankingChange, children }: {
     try {
       const updated = await analyze(result.endpoints.A.requested, result.endpoints.B.requested, result.preset,
         result.lighting?.utc ?? `${defaultLunarUtc}Z`, result.lighting?.earthStart ?? defaultEarthStart(), controller.signal,
-        { earthSites, earthCenter: customCenter ?? savedCenter, lunarRegion: result.lunarRegion?.id });
+        { earthSites, earthCenter: customCenter ?? savedCenter });
       if (!controller.signal.aborted) onUpdate(updated);
     } catch (failure) {
       if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Could not compare Earth regions.');
@@ -479,9 +478,9 @@ export default function EarthComparison({ result, replayCase, onHighlight, onMoo
         <WhyThisSite result={result} site={site} reportHref={reportHref} />
         <EvidenceQuality result={result} site={site} />
         {site?.route ? <Fragment key={site.id}>
-          <TerrainComparison lunarRegion={result.lunarRegion} lunar={result.lunar} earth={site.route} site={site} onOverlay={setTerrainOverlay}
+          <TerrainComparison lunar={result.lunar} earth={site.route} site={site} onOverlay={setTerrainOverlay}
             thresholdInput={roughnessThreshold} onThresholdChange={setRoughnessThreshold} />
-          <ComparisonProfile moonName={result.lunarRegion?.shortName ?? 'Hadley'} lunar={result.lunar} earth={site.route} name={site.name}
+          <ComparisonProfile lunar={result.lunar} earth={site.route} name={site.name}
             onHighlight={onHighlight} onEarthHighlight={setHighlight} />
         </Fragment> : site && <section className="profile earth-route-stats" aria-labelledby="earth-stats-title">
           <h3 id="earth-stats-title">{site.name} terrain comparison</h3>

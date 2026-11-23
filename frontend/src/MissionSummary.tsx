@@ -103,11 +103,8 @@ export function MissionHeader({ result, ranking }: {
         <p className="mission-reading-guide">Start with the lunar route, pick an Earth match, then check when to test cameras and whether rock measurements are available.</p>
         <a href="#earth-title" className="primary-button">Explore Earth matches <ArrowDownRight size={18} /></a>
       </div>
-      <div className="mission-hero-media"><img className="mission-hero-image"
-        src={import.meta.env.BASE_URL + (result.lunarRegion?.relief ?? (result.lunarRegion?.id === 'auto' ? 'terrain/moon-wac-overview.webp' : 'terrain/hadley-wac.webp'))}
-        alt={`Map of ${result.lunarRegion?.name ?? 'Hadley–Apennine'}`} />
-        <span>{result.lunarRegion?.name ?? 'Hadley–Apennine'} · {result.lunarRegion?.relief ? 'NASA SLDEM2015' : 'NASA LROC'}</span>
-      </div>
+      <div className="mission-hero-media"><img className="mission-hero-image" src={`${import.meta.env.BASE_URL}terrain/hadley-wac.webp`}
+        alt="LROC imagery of the Hadley–Apennine region" /><span>Hadley–Apennine · NASA LROC</span></div>
     </section>
   </>;
 }
